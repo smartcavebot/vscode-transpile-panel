@@ -119,6 +119,13 @@ export class TranslatePanel {
         }, delay);
     }
 
+    public syncScroll(percentage: number) {
+        this._panel.webview.postMessage({
+            type: 'scroll',
+            percentage: percentage
+        });
+    }
+
     private _getInitialHtml(): string {
         return `<!DOCTYPE html>
 <html lang="en">
@@ -190,10 +197,25 @@ export class TranslatePanel {
                 <span class="badge engine">${engine}</span>
             </div>
         </div>
-        <div class="content">
+        <div class="content" id="content">
             <pre class="translated">${this._escapeHtml(translated)}</pre>
         </div>
     </div>
+    <script>
+        (function() {
+            const vscode = acquireVsCodeApi();
+            const content = document.getElementById('content');
+
+            window.addEventListener('message', event => {
+                const message = event.data;
+                if (message.type === 'scroll') {
+                    const maxScroll = document.documentElement.scrollHeight - window.innerHeight;
+                    const targetScroll = Math.round(maxScroll * message.percentage);
+                    window.scrollTo({ top: targetScroll, behavior: 'auto' });
+                }
+            });
+        })();
+    </script>
 </body>
 </html>`;
     }

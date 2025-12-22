@@ -22,6 +22,21 @@ export function activate(context: vscode.ExtensionContext) {
         })
     );
 
+    // Listen for scroll changes (visible range)
+    context.subscriptions.push(
+        vscode.window.onDidChangeTextEditorVisibleRanges((event) => {
+            if (TranslatePanel.currentPanel && event.visibleRanges.length > 0) {
+                const activeEditor = vscode.window.activeTextEditor;
+                if (activeEditor && activeEditor === event.textEditor) {
+                    const firstVisibleLine = event.visibleRanges[0].start.line;
+                    const totalLines = activeEditor.document.lineCount;
+                    const scrollPercentage = totalLines > 0 ? firstVisibleLine / totalLines : 0;
+                    TranslatePanel.currentPanel.syncScroll(scrollPercentage);
+                }
+            }
+        })
+    );
+
     // Listen for document changes based on updateMode
     context.subscriptions.push(
         vscode.workspace.onDidChangeTextDocument((event) => {
