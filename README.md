@@ -2,6 +2,8 @@
 
 Real-time translation preview panel for any text-based file in VS Code.
 
+![Screenshot](resources/Screenshot_1.png)
+
 ![Version](https://img.shields.io/visual-studio-marketplace/v/iyulab.vscode-translate-panel)
 ![License](https://img.shields.io/github/license/iyulab/vscode-translate-panel)
 
