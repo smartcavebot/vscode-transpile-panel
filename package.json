@@ -63,13 +63,19 @@
         },
         "translatePanel.translationEngine": {
           "type": "string",
-          "enum": ["google", "gemini"],
+          "enum": [
+            "google",
+            "gemini"
+          ],
           "default": "google",
           "description": "Translation engine to use"
         },
         "translatePanel.updateMode": {
           "type": "string",
-          "enum": ["onType", "onSave"],
+          "enum": [
+            "onType",
+            "onSave"
+          ],
           "default": "onSave",
           "description": "When to update translation"
         },
@@ -91,13 +97,16 @@
     "compile": "tsc -p ./",
     "watch": "tsc -watch -p ./",
     "lint": "eslint src --ext ts",
-    "test": "node ./out/test/runTest.js"
+    "test": "node ./out/test/runTest.js",
+    "package": "vsce package",
+    "publish": "vsce publish"
   },
   "devDependencies": {
     "@types/node": "^20.10.0",
     "@types/vscode": "^1.85.0",
     "@typescript-eslint/eslint-plugin": "^6.13.0",
     "@typescript-eslint/parser": "^6.13.0",
+    "@vscode/vsce": "^3.7.1",
     "eslint": "^8.54.0",
     "typescript": "^5.3.0"
   },
