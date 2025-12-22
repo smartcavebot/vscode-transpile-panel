@@ -23,15 +23,27 @@ export function activate(context: vscode.ExtensionContext) {
     );
 
     // Listen for scroll changes (visible range)
+    // Account for VS Code editor scroll behavior:
+    // Editor scrolls until last line is at TOP (extra page of scroll)
+    // Preview scrolls until last line is at BOTTOM (standard web scroll)
     context.subscriptions.push(
         vscode.window.onDidChangeTextEditorVisibleRanges((event) => {
             if (TranslatePanel.currentPanel && event.visibleRanges.length > 0) {
                 const activeEditor = vscode.window.activeTextEditor;
                 if (activeEditor && activeEditor === event.textEditor) {
                     const firstVisibleLine = event.visibleRanges[0].start.line;
+                    const lastVisibleLine = event.visibleRanges[0].end.line;
+                    const visibleLineCount = lastVisibleLine - firstVisibleLine;
                     const totalLines = activeEditor.document.lineCount;
-                    const scrollPercentage = totalLines > 0 ? firstVisibleLine / totalLines : 0;
-                    TranslatePanel.currentPanel.syncScroll(scrollPercentage);
+
+                    // Editor's effective scroll range ends when last line reaches top
+                    // which is (totalLines - 1). But we want to map to preview's range
+                    // where scroll ends when last line reaches bottom.
+                    // Adjusted max: totalLines - visibleLineCount (approximately)
+                    const effectiveMax = Math.max(1, totalLines - visibleLineCount);
+                    const percentage = Math.min(1, firstVisibleLine / effectiveMax);
+
+                    TranslatePanel.currentPanel.syncScroll(percentage);
                 }
             }
         })

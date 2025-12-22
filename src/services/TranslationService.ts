@@ -4,16 +4,23 @@ import {
     GoogleTranslateProvider,
     GeminiTranslateProvider
 } from '../providers';
-import { CommentExtractor, ProcessedContent, getProcessor } from '../parsers';
+import { CommentExtractor, getProcessor, EnhancedMarkdownProcessor } from '../parsers';
+
+export interface MarkdownTranslationResult {
+    markdown: string;  // Translated markdown source
+    html: string;      // Rendered HTML (not used currently, for future extension)
+}
 
 export class TranslationService {
     private googleProvider: GoogleTranslateProvider;
     private geminiProvider: GeminiTranslateProvider;
     private commentExtractor: CommentExtractor;
+    private enhancedMarkdownProcessor: EnhancedMarkdownProcessor;
 
     constructor() {
         this.googleProvider = new GoogleTranslateProvider();
         this.commentExtractor = new CommentExtractor();
+        this.enhancedMarkdownProcessor = new EnhancedMarkdownProcessor();
 
         const config = vscode.workspace.getConfiguration('translatePanel');
         const apiKey = config.get<string>('geminiApiKey', '');
@@ -61,6 +68,36 @@ export class TranslationService {
 
         // Rebuild with translated comments
         return this.commentExtractor.rebuild(processed, translatedTexts);
+    }
+
+    /**
+     * Translate markdown with intelligent code block handling
+     * Extracts comments from code blocks and translates them separately
+     */
+    async translateMarkdownDocument(text: string, targetLang: string): Promise<MarkdownTranslationResult> {
+        // Process markdown to extract code block comments
+        const processed = this.enhancedMarkdownProcessor.processWithCodeBlocks(text);
+
+        // Translate markdown prose (with placeholders for code blocks)
+        const translatedProse = await this.translate(processed.text, targetLang);
+
+        // Translate code block comments
+        let translatedComments: string[] = [];
+        if (processed.codeBlockComments.length > 0) {
+            translatedComments = await this.translateBatch(processed.codeBlockComments, targetLang);
+        }
+
+        // Restore markdown with translated comments in code blocks
+        const translatedMarkdown = this.enhancedMarkdownProcessor.restoreWithTranslatedComments(
+            translatedProse,
+            processed.regions,
+            translatedComments
+        );
+
+        return {
+            markdown: translatedMarkdown,
+            html: ''  // HTML rendering is done in TranslatePanel
+        };
     }
 
     /**

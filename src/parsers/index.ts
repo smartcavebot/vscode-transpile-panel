@@ -5,8 +5,11 @@ export {
     MarkdownProcessor,
     JsonProcessor,
     HtmlProcessor,
+    EnhancedMarkdownProcessor,
     getProcessor,
     registerProcessor,
     ProcessedText,
-    ProtectedRegion
+    ProtectedRegion,
+    EnhancedProcessedText
 } from './ContentProcessor';
+export { CodeBlockCommentExtractor, CodeBlockCommentResult } from './CodeBlockCommentExtractor';

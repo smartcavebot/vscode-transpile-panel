@@ -1,5 +1,6 @@
 import * as vscode from 'vscode';
-import { TranslationService } from '../services/TranslationService';
+import { TranslationService, MarkdownTranslationResult } from '../services/TranslationService';
+import { MarkdownRenderer } from './MarkdownRenderer';
 
 export class TranslatePanel {
     public static currentPanel: TranslatePanel | undefined;
@@ -8,25 +9,50 @@ export class TranslatePanel {
     private readonly _panel: vscode.WebviewPanel;
     private readonly _extensionUri: vscode.Uri;
     private readonly _translationService: TranslationService;
+    private readonly _markdownRenderer: MarkdownRenderer;
     private _disposables: vscode.Disposable[] = [];
     private _debounceTimer: NodeJS.Timeout | undefined;
     private _currentRequestId: number = 0;  // Track current request to cancel stale ones
     private _isTranslating: boolean = false;
     private _pendingDocument: vscode.TextDocument | null = null;
+    private _translatedMarkdownSource: string = '';  // For copy feature
+    private _lastDocumentUri: string = '';  // Track last translated document
+    private _lastDocumentVersion: number = -1;  // Track document version to detect changes
 
     private constructor(panel: vscode.WebviewPanel, extensionUri: vscode.Uri) {
         this._panel = panel;
         this._extensionUri = extensionUri;
         this._translationService = new TranslationService();
+        this._markdownRenderer = new MarkdownRenderer();
 
         this._panel.webview.html = this._getInitialHtml();
 
         this._panel.onDidDispose(() => this.dispose(), null, this._disposables);
 
+        // Handle messages from webview
+        this._panel.webview.onDidReceiveMessage(
+            message => {
+                switch (message.type) {
+                    case 'copyMarkdown':
+                        this._copyMarkdownToClipboard();
+                        return;
+                }
+            },
+            null,
+            this._disposables
+        );
+
         // Initial content load
         const activeEditor = vscode.window.activeTextEditor;
         if (activeEditor) {
             this.updateContent(activeEditor.document);
+        }
+    }
+
+    private async _copyMarkdownToClipboard(): Promise<void> {
+        if (this._translatedMarkdownSource) {
+            await vscode.env.clipboard.writeText(this._translatedMarkdownSource);
+            this._panel.webview.postMessage({ type: 'copied' });
         }
     }
 
@@ -54,17 +80,30 @@ export class TranslatePanel {
         TranslatePanel.currentPanel = new TranslatePanel(panel, extensionUri);
     }
 
-    public async updateContent(document: vscode.TextDocument) {
+    public async updateContent(document: vscode.TextDocument, force: boolean = false) {
+        const docUri = document.uri.toString();
+        const docVersion = document.version;
+
+        // Skip if same document and version (no actual changes)
+        if (!force && docUri === this._lastDocumentUri && docVersion === this._lastDocumentVersion) {
+            return;
+        }
+
         // If already translating, queue this request
         if (this._isTranslating) {
             this._pendingDocument = document;
             return;
         }
 
+        // Update tracking
+        this._lastDocumentUri = docUri;
+        this._lastDocumentVersion = docVersion;
+
         const requestId = ++this._currentRequestId;
         const text = document.getText();
         const fileName = document.fileName.split(/[/\\]/).pop() || 'Unknown';
         const languageId = document.languageId;
+        const isMarkdown = languageId === 'markdown' || languageId === 'md';
 
         this._isTranslating = true;
         this._panel.webview.html = this._getLoadingHtml(fileName);
@@ -75,18 +114,37 @@ export class TranslatePanel {
             const targetLang = configuredLang || vscode.env.language.split('-')[0] || 'en';
             const engine = config.get<string>('translationEngine', 'google');
 
-            const translated = await this._translationService.translateDocument(text, languageId, targetLang);
-
             // Only update if this is still the latest request
             if (requestId === this._currentRequestId) {
-                this._panel.webview.html = this._getContentHtml(
-                    fileName,
-                    languageId,
-                    text,
-                    translated,
-                    targetLang,
-                    engine
-                );
+                if (isMarkdown) {
+                    // Use enhanced markdown translation
+                    const result = await this._translationService.translateMarkdownDocument(text, targetLang);
+                    this._translatedMarkdownSource = result.markdown;
+
+                    // Render markdown to HTML
+                    const renderedHtml = this._markdownRenderer.render(result.markdown);
+
+                    this._panel.webview.html = this._getMarkdownContentHtml(
+                        fileName,
+                        languageId,
+                        renderedHtml,
+                        targetLang,
+                        engine
+                    );
+                } else {
+                    // Use standard translation for non-markdown files
+                    const translated = await this._translationService.translateDocument(text, languageId, targetLang);
+                    this._translatedMarkdownSource = '';
+
+                    this._panel.webview.html = this._getContentHtml(
+                        fileName,
+                        languageId,
+                        text,
+                        translated,
+                        targetLang,
+                        engine
+                    );
+                }
             }
         } catch (error) {
             // Only show error if this is still the latest request
@@ -119,6 +177,10 @@ export class TranslatePanel {
         }, delay);
     }
 
+    /**
+     * Sync scroll position with the editor using percentage-based scrolling
+     * @param percentage Scroll percentage (0 to 1), adjusted for editor vs preview scroll behavior
+     */
     public syncScroll(percentage: number) {
         this._panel.webview.postMessage({
             type: 'scroll',
@@ -212,6 +274,98 @@ export class TranslatePanel {
                     const maxScroll = document.documentElement.scrollHeight - window.innerHeight;
                     const targetScroll = Math.round(maxScroll * message.percentage);
                     window.scrollTo({ top: targetScroll, behavior: 'auto' });
+                }
+            });
+        })();
+    </script>
+</body>
+</html>`;
+    }
+
+    private _getMarkdownContentHtml(
+        fileName: string,
+        languageId: string,
+        renderedHtml: string,
+        targetLang: string,
+        engine: string
+    ): string {
+        return `<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Translate Preview</title>
+    <style>
+        ${this._getStyles()}
+        ${MarkdownRenderer.getHighlightStyles()}
+        ${MarkdownRenderer.getMarkdownStyles()}
+
+        /* Copy button styles */
+        .copy-button {
+            padding: 4px 10px;
+            background: var(--vscode-button-background);
+            color: var(--vscode-button-foreground);
+            border: none;
+            border-radius: 3px;
+            cursor: pointer;
+            font-size: 12px;
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+        .copy-button:hover {
+            background: var(--vscode-button-hoverBackground);
+        }
+        .copy-button.copied {
+            background: var(--vscode-testing-iconPassed, #4caf50);
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h2>${this._escapeHtml(fileName)}</h2>
+            <div class="meta">
+                <button id="copyBtn" class="copy-button" title="Copy Markdown">
+                    <span>Copy MD</span>
+                </button>
+                <span class="badge">${languageId}</span>
+                <span class="badge">${targetLang.toUpperCase()}</span>
+                <span class="badge engine">${engine}</span>
+            </div>
+        </div>
+        <div class="content markdown-content" id="content">
+            ${renderedHtml}
+        </div>
+    </div>
+    <script>
+        (function() {
+            const vscode = acquireVsCodeApi();
+            const copyBtn = document.getElementById('copyBtn');
+
+            if (copyBtn) {
+                copyBtn.addEventListener('click', () => {
+                    vscode.postMessage({ type: 'copyMarkdown' });
+                });
+            }
+
+            window.addEventListener('message', event => {
+                const message = event.data;
+                if (message.type === 'scroll') {
+                    // Percentage-based scroll sync
+                    const maxScroll = document.documentElement.scrollHeight - window.innerHeight;
+                    const targetScroll = Math.round(maxScroll * message.percentage);
+                    window.scrollTo({ top: targetScroll, behavior: 'smooth' });
+                } else if (message.type === 'copied') {
+                    if (copyBtn) {
+                        const originalText = copyBtn.innerHTML;
+                        copyBtn.innerHTML = '<span>Copied!</span>';
+                        copyBtn.classList.add('copied');
+                        setTimeout(() => {
+                            copyBtn.innerHTML = originalText;
+                            copyBtn.classList.remove('copied');
+                        }, 2000);
+                    }
                 }
             });
         })();

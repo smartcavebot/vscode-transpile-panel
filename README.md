@@ -31,7 +31,7 @@ Real-time translation preview panel for any text-based file in VS Code.
 | `translatePanel.targetLanguage` | System language | Target language code (`ko`, `en`, `ja`, `zh`, `es`, etc.) |
 | `translatePanel.translationEngine` | `google` | Translation engine: `google` or `gemini` |
 | `translatePanel.updateMode` | `onSave` | Update trigger: `onSave` or `onType` |
-| `translatePanel.geminiApiKey` | - | API key for Gemini engine |
+| `translatePanel.geminiApiKey` | - | API key for Gemini engine (optional) |
 | `translatePanel.debounceDelay` | `500` | Delay in ms for `onType` mode |
 
 ## Supported Languages
@@ -66,11 +66,11 @@ This text is translated. → 이 텍스트는 번역됩니다.
 
 - VS Code 1.85.0 or higher
 - Internet connection for translation API
-- Gemini API key (optional, for Gemini engine)
+- Gemini API key (recommended)
 
 ## Disclaimer
 
-This extension uses unofficial Google Translate API for the default engine. For heavy usage, consider using the Gemini API with your own key.
+This extension uses unofficial Google Translate API for the default engine. We recommend using the Gemini API with your own key for better reliability.
 
 ## License
 
