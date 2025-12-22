@@ -2,6 +2,20 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.0.2] - 2024-12-22
+
+### Added
+- Enhanced markdown rendering with syntax highlighting (highlight.js + marked)
+- Intelligent code block comment extraction - translates only comments, preserves code
+- Copy translated markdown button
+- Scroll synchronization between editor and preview panel
+- Table structure protection during translation
+
+### Fixed
+- Placeholder translation issue (English words like "CODE" being translated)
+- Windows line ending (CRLF) handling in code block detection
+- Table newline preservation during translation
+
 ## [1.0.1] - 2024-12-22
 
 ### Fixed
