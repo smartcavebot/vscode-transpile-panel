@@ -1,0 +1,107 @@
+{
+  "name": "vscode-translate-panel",
+  "displayName": "Translate Panel",
+  "description": "Real-time translation preview panel for any text-based file",
+  "version": "0.1.0",
+  "publisher": "iyulab",
+  "license": "MIT",
+  "icon": "resources/icon.png",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/iyulab/vscode-translate-panel"
+  },
+  "homepage": "https://github.com/iyulab/vscode-translate-panel#readme",
+  "bugs": {
+    "url": "https://github.com/iyulab/vscode-translate-panel/issues"
+  },
+  "engines": {
+    "vscode": "^1.85.0"
+  },
+  "categories": [
+    "Other",
+    "Programming Languages"
+  ],
+  "keywords": [
+    "translate",
+    "translation",
+    "preview",
+    "i18n",
+    "localization",
+    "google translate",
+    "gemini",
+    "comments"
+  ],
+  "activationEvents": [],
+  "main": "./out/extension.js",
+  "contributes": {
+    "commands": [
+      {
+        "command": "translatePanel.openPreview",
+        "title": "Translate Panel: Open Preview",
+        "icon": {
+          "light": "resources/icons/translate-light.svg",
+          "dark": "resources/icons/translate-dark.svg"
+        }
+      }
+    ],
+    "menus": {
+      "editor/title": [
+        {
+          "command": "translatePanel.openPreview",
+          "when": "editorTextFocus",
+          "group": "navigation"
+        }
+      ]
+    },
+    "configuration": {
+      "title": "Translate Panel",
+      "properties": {
+        "translatePanel.targetLanguage": {
+          "type": "string",
+          "default": "",
+          "description": "Target language code (e.g., ko, en, ja, es, zh). Leave empty to use system language."
+        },
+        "translatePanel.translationEngine": {
+          "type": "string",
+          "enum": ["google", "gemini"],
+          "default": "google",
+          "description": "Translation engine to use"
+        },
+        "translatePanel.updateMode": {
+          "type": "string",
+          "enum": ["onType", "onSave"],
+          "default": "onSave",
+          "description": "When to update translation"
+        },
+        "translatePanel.geminiApiKey": {
+          "type": "string",
+          "default": "",
+          "description": "Gemini API key (required for Gemini engine)"
+        },
+        "translatePanel.debounceDelay": {
+          "type": "number",
+          "default": 500,
+          "description": "Debounce delay in milliseconds for onType mode"
+        }
+      }
+    }
+  },
+  "scripts": {
+    "vscode:prepublish": "npm run compile",
+    "compile": "tsc -p ./",
+    "watch": "tsc -watch -p ./",
+    "lint": "eslint src --ext ts",
+    "test": "node ./out/test/runTest.js"
+  },
+  "devDependencies": {
+    "@types/node": "^20.10.0",
+    "@types/vscode": "^1.85.0",
+    "@typescript-eslint/eslint-plugin": "^6.13.0",
+    "@typescript-eslint/parser": "^6.13.0",
+    "eslint": "^8.54.0",
+    "typescript": "^5.3.0"
+  },
+  "dependencies": {
+    "@google/generative-ai": "^0.21.0"
+  }
+}
