@@ -5,4 +5,8 @@ src/**
 tsconfig.json
 **/*.map
 **/*.ts
-node_modules/**
+!node_modules/@google/generative-ai/**
+node_modules/.package-lock.json
+images/**
+resources/*.svg
+CLAUDE.md

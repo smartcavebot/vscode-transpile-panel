@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.0.1] - 2024-12-22
+
+### Fixed
+- Fix extension activation issue (command not found)
+- Fix missing dependencies in packaged extension
+
 ## [1.0.0] - 2024-12-22
 
 ### Added

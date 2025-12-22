@@ -2,7 +2,7 @@
   "name": "vscode-translate-panel",
   "displayName": "Translate Panel",
   "description": "Real-time translation preview panel for any text-based file",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "publisher": "iyulab",
   "license": "MIT",
   "icon": "resources/icon.png",
@@ -31,7 +31,9 @@
     "gemini",
     "comments"
   ],
-  "activationEvents": [],
+  "activationEvents": [
+    "onCommand:translatePanel.openPreview"
+  ],
   "main": "./out/extension.js",
   "contributes": {
     "commands": [
