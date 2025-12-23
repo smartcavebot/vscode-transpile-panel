@@ -70,8 +70,7 @@ export abstract class ContentProcessor {
             'SCRIPT': 'S',
             'STYLE': 'Y',
             'TAG': 'T',
-            'TABSEP': 'B',  // Table separator row
-            'ROWBR': 'N'    // Row break (newline)
+            'TABLE': 'A'    // Markdown table (entire structure)
         };
         const code = typeMap[type] || type.charAt(0);
         // Format: ⟦§X0§⟧ where X is type code, 0 is index
@@ -373,54 +372,18 @@ export class EnhancedMarkdownProcessor extends ContentProcessor {
             return placeholder;
         });
 
-        // 2.5. Tables - protect structure, translate cell contents
-        // Match table blocks: header row, separator row, and data rows
-        result = result.replace(/^(\|.+\|)\r?\n(\|[-:\s|]+\|)\r?\n((?:\|.+\|(?:\r?\n)?)+)/gm, (match, headerRow, separatorRow, bodyRows, offset) => {
-            // Helper to create a row break placeholder (each one unique)
-            const createRowBreak = (): string => {
-                const placeholder = this.createPlaceholder(index++, 'ROWBR');
-                regions.push({
-                    start: offset,
-                    end: offset + 1,
-                    content: '\n',
-                    placeholder
-                });
-                return placeholder;
-            };
-
-            // Protect separator row entirely
-            const sepPlaceholder = this.createPlaceholder(index++, 'TABSEP');
+        // 2.5. Tables - protect entire table structure
+        // Translation APIs often break table formatting (pipes, newlines)
+        // so we protect the entire table and don't translate its contents
+        result = result.replace(/^(\|.+\|)\r?\n(\|[-:\s|]+\|)\r?\n((?:\|.+\|(?:\r?\n)?)+)/gm, (match, _headerRow, _separatorRow, _bodyRows, offset) => {
+            const placeholder = this.createPlaceholder(index++, 'TABLE');
             regions.push({
                 start: offset,
-                end: offset + separatorRow.length,
-                content: separatorRow,
-                placeholder: sepPlaceholder
+                end: offset + match.length,
+                content: match,
+                placeholder
             });
-
-            // Check if original body rows ended with newline
-            const hasTrailingNewline = /\r?\n$/.test(bodyRows);
-
-            // Build result with unique placeholders for each row break
-            const bodyRowsArray = bodyRows.trim().split(/\r?\n/);
-
-            // Header + break + separator + break + body rows (with breaks between)
-            let tableResult = headerRow;
-            tableResult += createRowBreak();
-            tableResult += sepPlaceholder;
-            tableResult += createRowBreak();
-            tableResult += bodyRowsArray.map((row: string, i: number) => {
-                if (i < bodyRowsArray.length - 1) {
-                    return row + createRowBreak();
-                }
-                return row;
-            }).join('');
-
-            // Preserve trailing newline if original had one
-            if (hasTrailingNewline) {
-                tableResult += createRowBreak();
-            }
-
-            return tableResult;
+            return placeholder;
         });
 
         // 3. Inline code: `code` - protect entirely (no translation)
