@@ -2,6 +2,17 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.0.4] - 2025-02-02
+
+### Fixed
+- Extension activation failure on VS Code 1.96+ and Insider builds
+- Switched to esbuild bundling for reliable dependency resolution
+
+## [1.0.3] - 2025-01-15
+
+### Fixed
+- Enhanced table structure protection in Markdown processor
+
 ## [1.0.2] - 2024-12-22
 
 ### Added

@@ -2,7 +2,7 @@
   "name": "vscode-translate-panel",
   "displayName": "Translate Panel",
   "description": "Real-time translation preview panel for any text-based file",
-  "version": "1.0.3",
+  "version": "1.0.5",
   "publisher": "iyulab",
   "license": "MIT",
   "icon": "resources/icon.png",
@@ -95,26 +95,32 @@
     }
   },
   "scripts": {
-    "vscode:prepublish": "npm run compile",
-    "compile": "tsc -p ./",
-    "watch": "tsc -watch -p ./",
+    "vscode:prepublish": "npm run package:prod",
+    "compile": "npm run check-types && node esbuild.js",
+    "watch": "npm-run-all -p watch:*",
+    "watch:esbuild": "node esbuild.js --watch",
+    "watch:tsc": "tsc --noEmit --watch --project tsconfig.json",
+    "check-types": "tsc --noEmit",
     "lint": "eslint src --ext ts",
     "test": "node ./out/test/runTest.js",
+    "package:prod": "npm run check-types && node esbuild.js --production",
     "package": "vsce package",
     "publish": "vsce publish"
   },
   "devDependencies": {
-    "@types/node": "^20.10.0",
+    "@types/node": "^25.2.0",
     "@types/vscode": "^1.85.0",
-    "@typescript-eslint/eslint-plugin": "^6.13.0",
-    "@typescript-eslint/parser": "^6.13.0",
+    "@typescript-eslint/eslint-plugin": "^8.54.0",
+    "@typescript-eslint/parser": "^8.54.0",
     "@vscode/vsce": "^3.7.1",
-    "eslint": "^8.54.0",
-    "typescript": "^5.3.0"
+    "esbuild": "^0.27.2",
+    "eslint": "^9.39.2",
+    "npm-run-all": "^4.1.5",
+    "typescript": "^5.9.3"
   },
   "dependencies": {
-    "@google/generative-ai": "^0.21.0",
-    "highlight.js": "^11.9.0",
-    "marked": "^12.0.0"
+    "@google/generative-ai": "^0.24.1",
+    "highlight.js": "^11.11.1",
+    "marked": "^17.0.1"
   }
 }

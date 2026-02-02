@@ -2,7 +2,7 @@
  * Markdown to HTML renderer with syntax highlighting
  */
 
-import { marked, Renderer } from 'marked';
+import { marked, Renderer, Tokens } from 'marked';
 import hljs from 'highlight.js';
 
 export interface HeadingInfo {
@@ -21,25 +21,25 @@ export class MarkdownRenderer {
         const renderer = new Renderer();
 
         // Override heading rendering to add IDs for scroll sync
-        renderer.heading = (text: string, level: number): string => {
+        renderer.heading = ({ text, depth }: Tokens.Heading): string => {
             const id = `heading-${this.headingIndex}`;
             this.lastHeadings.push({
                 id,
                 text: this.stripHtml(text),
-                level,
+                level: depth,
                 index: this.headingIndex
             });
             this.headingIndex++;
-            return `<h${level} id="${id}">${text}</h${level}>`;
+            return `<h${depth} id="${id}">${text}</h${depth}>`;
         };
 
         // Override code block rendering with syntax highlighting
-        renderer.code = (code: string, infostring: string | undefined): string => {
-            const language = infostring || '';
+        renderer.code = ({ text, lang }: Tokens.Code): string => {
+            const language = lang || '';
             const validLanguage = hljs.getLanguage(language) ? language : 'plaintext';
 
             try {
-                const highlighted = hljs.highlight(code, {
+                const highlighted = hljs.highlight(text, {
                     language: validLanguage,
                     ignoreIllegals: true
                 }).value;
@@ -47,7 +47,7 @@ export class MarkdownRenderer {
                 return `<pre><code class="hljs language-${validLanguage}">${highlighted}</code></pre>`;
             } catch {
                 // Fallback to plain text if highlighting fails
-                return `<pre><code class="hljs">${this.escapeHtml(code)}</code></pre>`;
+                return `<pre><code class="hljs">${this.escapeHtml(text)}</code></pre>`;
             }
         };
 
