@@ -2,7 +2,7 @@
   "name": "vscode-translate-panel",
   "displayName": "Translate Panel",
   "description": "Real-time translation preview panel for any text-based file",
-  "version": "1.0.5",
+  "version": "1.1.0",
   "publisher": "iyulab",
   "license": "MIT",
   "icon": "resources/icon.png",

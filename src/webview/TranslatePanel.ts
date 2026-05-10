@@ -8,6 +8,7 @@ export class TranslatePanel {
 
     private readonly _panel: vscode.WebviewPanel;
     private readonly _extensionUri: vscode.Uri;
+    private readonly _localResourceRoots: readonly vscode.Uri[];
     private readonly _translationService: TranslationService;
     private readonly _markdownRenderer: MarkdownRenderer;
     private _disposables: vscode.Disposable[] = [];
@@ -19,9 +20,10 @@ export class TranslatePanel {
     private _lastDocumentUri: string = '';  // Track last translated document
     private _lastDocumentVersion: number = -1;  // Track document version to detect changes
 
-    private constructor(panel: vscode.WebviewPanel, extensionUri: vscode.Uri) {
+    private constructor(panel: vscode.WebviewPanel, extensionUri: vscode.Uri, localResourceRoots: readonly vscode.Uri[]) {
         this._panel = panel;
         this._extensionUri = extensionUri;
+        this._localResourceRoots = localResourceRoots;
         this._translationService = new TranslationService();
         this._markdownRenderer = new MarkdownRenderer();
 
@@ -56,6 +58,29 @@ export class TranslatePanel {
         }
     }
 
+    private static _fsPathContains(rootFsPath: string, childFsPath: string): boolean {
+        const root = rootFsPath.toLowerCase().replace(/[\\/]$/, '');
+        const child = childFsPath.toLowerCase();
+        return child === root || child.startsWith(root + '/') || child.startsWith(root + '\\');
+    }
+
+    private static _buildLocalResourceRoots(extensionUri: vscode.Uri, documentUri?: vscode.Uri): vscode.Uri[] {
+        const roots: vscode.Uri[] = [extensionUri];
+        if (vscode.workspace.workspaceFolders) {
+            roots.push(...vscode.workspace.workspaceFolders.map(f => f.uri));
+        }
+        if (documentUri) {
+            const docDir = vscode.Uri.joinPath(documentUri, '..');
+            const alreadyCovered = roots.some(r =>
+                TranslatePanel._fsPathContains(r.fsPath, documentUri.fsPath)
+            );
+            if (!alreadyCovered) {
+                roots.push(docDir);
+            }
+        }
+        return roots;
+    }
+
     public static createOrShow(extensionUri: vscode.Uri) {
         const column = vscode.window.activeTextEditor
             ? vscode.ViewColumn.Beside
@@ -66,6 +91,12 @@ export class TranslatePanel {
             return;
         }
 
+        const activeEditor = vscode.window.activeTextEditor;
+        const localResourceRoots = TranslatePanel._buildLocalResourceRoots(
+            extensionUri,
+            activeEditor?.document.uri
+        );
+
         const panel = vscode.window.createWebviewPanel(
             TranslatePanel.viewType,
             'Translate Preview',
@@ -73,14 +104,37 @@ export class TranslatePanel {
             {
                 enableScripts: true,
                 retainContextWhenHidden: true,
-                localResourceRoots: [extensionUri]
+                localResourceRoots
             }
         );
 
-        TranslatePanel.currentPanel = new TranslatePanel(panel, extensionUri);
+        TranslatePanel.currentPanel = new TranslatePanel(panel, extensionUri, localResourceRoots);
     }
 
     public async updateContent(document: vscode.TextDocument, force: boolean = false) {
+        // Recreate panel if document directory is not within any localResourceRoot
+        const isCovered = this._localResourceRoots.some(root =>
+            TranslatePanel._fsPathContains(root.fsPath, document.uri.fsPath)
+        );
+        if (!isCovered) {
+            const currentColumn = this._panel.viewColumn ?? vscode.ViewColumn.Beside;
+            const extensionUri = this._extensionUri;
+            this._currentRequestId++;  // invalidate any in-flight translation on old panel
+            this.dispose();
+            const newRoots = TranslatePanel._buildLocalResourceRoots(extensionUri, document.uri);
+            const panel = vscode.window.createWebviewPanel(
+                TranslatePanel.viewType,
+                'Translate Preview',
+                currentColumn,
+                { enableScripts: true, retainContextWhenHidden: true, localResourceRoots: newRoots }
+            );
+            const newInstance = new TranslatePanel(panel, extensionUri, newRoots);
+            TranslatePanel.currentPanel = newInstance;
+            // Ensure the triggering document is translated (constructor may use activeEditor.document)
+            newInstance.updateContent(document);
+            return;
+        }
+
         const docUri = document.uri.toString();
         const docVersion = document.version;
 
@@ -129,7 +183,8 @@ export class TranslatePanel {
                         languageId,
                         renderedHtml,
                         targetLang,
-                        engine
+                        engine,
+                        document.uri
                     );
                 } else {
                     // Use standard translation for non-markdown files
@@ -282,13 +337,33 @@ export class TranslatePanel {
 </html>`;
     }
 
+    private _resolveImagePaths(html: string, documentUri: vscode.Uri): string {
+        const documentDir = vscode.Uri.joinPath(documentUri, '..');
+        return html.replace(/(<img\b[^>]*?\ssrc=")([^"]+)(")/gi, (match, prefix, src, suffix) => {
+            if (/^(data:|https?:|vscode-resource:|vscode-webview-resource:)/i.test(src)) {
+                return match;
+            }
+            try {
+                const resolvedUri = src.startsWith('/')
+                    ? vscode.Uri.file(src)
+                    : vscode.Uri.joinPath(documentDir, src);
+                const webviewUri = this._panel.webview.asWebviewUri(resolvedUri);
+                return `${prefix}${webviewUri}${suffix}`;
+            } catch {
+                return match;
+            }
+        });
+    }
+
     private _getMarkdownContentHtml(
         fileName: string,
         languageId: string,
         renderedHtml: string,
         targetLang: string,
-        engine: string
+        engine: string,
+        documentUri?: vscode.Uri
     ): string {
+        const resolvedHtml = documentUri ? this._resolveImagePaths(renderedHtml, documentUri) : renderedHtml;
         return `<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -335,7 +410,7 @@ export class TranslatePanel {
             </div>
         </div>
         <div class="content markdown-content" id="content">
-            ${renderedHtml}
+            ${resolvedHtml}
         </div>
     </div>
     <script>
