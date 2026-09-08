@@ -78,7 +78,7 @@ export class VscodeProjectionPair implements vscode.Disposable {
      */
     applySourceChange(event: vscode.TextDocumentChangeEvent): boolean {
         this.assertActive();
-        if (!this.matches(event.document)) {
+        if (!this.matches(event.document) || event.contentChanges.length === 0) {
             return false;
         }
 
