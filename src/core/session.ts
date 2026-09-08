@@ -176,6 +176,53 @@ export function selectBoundedSlice(
     };
 }
 
+/**
+ * Expand a pending dirty requirement until the context-expanded bounded slice will never cut
+ * through an existing source-owned target segment.
+ *
+ * This preserves the projection-buffer invariant that replacements own complete segments. Each
+ * loop absorbs at least one previously partial segment, so the process terminates in at most the
+ * number of owned ranges plus one pass.
+ */
+export function stabilizeProjectionRequirement(
+    text: string,
+    pendingDirtyOffsets: OffsetRange | undefined,
+    contextLines: number,
+    ownedRanges: readonly OffsetRange[],
+): OffsetRange | undefined {
+    for (const range of ownedRanges) {
+        assertNonEmptyOffsetRange(range);
+    }
+
+    let required = pendingDirtyOffsets
+        ? { start: pendingDirtyOffsets.start, end: pendingDirtyOffsets.end }
+        : undefined;
+
+    for (let iteration = 0; iteration <= ownedRanges.length; iteration += 1) {
+        const dirtyRange = required ? offsetRangeToTextRange(text, required) : undefined;
+        const planned = textRangeToOffsetRange(
+            text,
+            selectBoundedSlice(text, dirtyRange, contextLines).range,
+        );
+
+        let expanded = required;
+        let absorbed = false;
+        for (const owned of ownedRanges) {
+            if (rangesOverlap(planned, owned) && !rangeContains(planned, owned)) {
+                expanded = unionOffsetRanges(expanded, owned);
+                absorbed = true;
+            }
+        }
+
+        if (!absorbed) {
+            return required;
+        }
+        required = expanded;
+    }
+
+    throw new Error('Projection replacement requirement did not stabilize.');
+}
+
 function assertNonEmptyOffsetRange(range: OffsetRange): void {
     if (
         !Number.isInteger(range.start) ||
@@ -185,6 +232,14 @@ function assertNonEmptyOffsetRange(range: OffsetRange): void {
     ) {
         throw new RangeError('Required projection range must be a non-empty half-open offset range.');
     }
+}
+
+function rangesOverlap(a: OffsetRange, b: OffsetRange): boolean {
+    return a.start < b.end && b.start < a.end;
+}
+
+function rangeContains(outer: OffsetRange, inner: OffsetRange): boolean {
+    return outer.start <= inner.start && outer.end >= inner.end;
 }
 
 function positionToOffset(text: string, position: TextPosition): number {
