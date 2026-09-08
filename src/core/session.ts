@@ -28,9 +28,13 @@ export class ProjectionSession {
         return this.revision;
     }
 
+    cancelActive(): void {
+        this.cancellation?.cancel();
+    }
+
     invalidate(changes: readonly TextChange[] = []): number {
         this.revision += 1;
-        this.cancellation?.cancel();
+        this.cancelActive();
 
         if (changes.length > 0) {
             const normalizedChanges = normalizeChanges(changes);
@@ -49,7 +53,7 @@ export class ProjectionSession {
         provider: ProjectionProvider,
     ): Promise<ProjectionResult | undefined> {
         const capturedRevision = this.revision;
-        this.cancellation?.cancel();
+        this.cancelActive();
 
         const cancellation = new CoreCancellationController();
         this.cancellation = cancellation;
