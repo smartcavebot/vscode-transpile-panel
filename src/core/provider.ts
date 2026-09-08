@@ -30,20 +30,10 @@ export interface ProjectionProvider {
 }
 
 export class CoreCancellationController {
-    private _aborted = false;
-
-    readonly signal: CancellationSignal = {
-        get aborted() {
-            return controller._aborted;
-        },
-    };
+    private readonly state = { aborted: false };
+    readonly signal: CancellationSignal = this.state;
 
     cancel(): void {
-        this._aborted = true;
+        this.state.aborted = true;
     }
-
-    // Captured indirection keeps the public signal immutable while allowing cancellation.
-    private static readonly noop = undefined;
 }
-
-const controller = undefined as never;
