@@ -13,6 +13,7 @@ fs.rmSync(outDir, { recursive: true, force: true });
 try {
     run(process.execPath, [tsc, '-p', path.join(root, 'tsconfig.core-test.json')]);
     run(process.execPath, [path.join(root, 'tests', 'core-smoke.js')]);
+    run(process.execPath, [path.join(root, 'tests', 'scheduler-smoke.js')]);
 } finally {
     fs.rmSync(outDir, { recursive: true, force: true });
 }
