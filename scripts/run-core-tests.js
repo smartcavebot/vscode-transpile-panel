@@ -15,6 +15,7 @@ try {
     run(process.execPath, [path.join(root, 'tests', 'core-smoke.js')]);
     run(process.execPath, [path.join(root, 'tests', 'scheduler-smoke.js')]);
     run(process.execPath, [path.join(root, 'tests', 'projection-buffer-smoke.js')]);
+    run(process.execPath, [path.join(root, 'tests', 'session-buffer-smoke.js')]);
 } finally {
     fs.rmSync(outDir, { recursive: true, force: true });
 }

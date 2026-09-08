@@ -4,7 +4,15 @@ import {
     rebaseDirtyOffsetRange,
     unionOffsetRanges,
 } from './changes';
-import { DocumentSnapshot, HarnessProfile, ProjectionSlice, SemanticPolicyProfile, TextChange, TextRange } from './model';
+import {
+    DocumentSnapshot,
+    HarnessProfile,
+    ProjectionSlice,
+    SemanticPolicyProfile,
+    TextChange,
+    TextPosition,
+    TextRange,
+} from './model';
 import { CoreCancellationController, ProjectionProvider, ProjectionResult } from './provider';
 
 export { changedOffsetsAfterEdits, rebaseDirtyOffsetRange as rebaseOffsetRange } from './changes';
@@ -15,6 +23,17 @@ export interface ProjectionSessionOptions {
     readonly contextLines: number;
     readonly policy: SemanticPolicyProfile;
     readonly harness: HarnessProfile;
+}
+
+/**
+ * An accepted provider result plus the authoritative source ownership chosen by the session.
+ *
+ * Providers deliberately do not supply `sourceOffsets`: they translate the requested fragment,
+ * while the session decides which exact document span that fragment owns after revision checks.
+ */
+export interface ProjectionCommit extends ProjectionResult {
+    readonly sourceOffsets: OffsetRange;
+    readonly sourceRange: TextRange;
 }
 
 export class ProjectionSession {
@@ -53,7 +72,7 @@ export class ProjectionSession {
     async refresh(
         document: DocumentSnapshot,
         provider: ProjectionProvider,
-    ): Promise<ProjectionResult | undefined> {
+    ): Promise<ProjectionCommit | undefined> {
         const capturedRevision = this.revision;
         this.cancelActive();
 
@@ -64,6 +83,7 @@ export class ProjectionSession {
             ? offsetRangeToTextRange(document.text, this.dirtyOffsets)
             : undefined;
         const slice = selectBoundedSlice(document.text, dirtyRange, this.options.contextLines);
+        const sourceOffsets = textRangeToOffsetRange(document.text, slice.range);
         const result = await provider.project({
             sourceLanguage: this.options.sourceLanguage,
             targetLanguage: this.options.targetLanguage,
@@ -91,7 +111,12 @@ export class ProjectionSession {
         this.previousSourceRange = slice.range;
         this.previousProjection = result.text;
         this.dirtyOffsets = undefined;
-        return result;
+
+        return {
+            ...result,
+            sourceOffsets,
+            sourceRange: slice.range,
+        };
     }
 }
 
@@ -100,6 +125,15 @@ export function offsetRangeToTextRange(text: string, range: OffsetRange): TextRa
         start: offsetToPosition(text, range.start),
         end: offsetToPosition(text, range.end),
     };
+}
+
+export function textRangeToOffsetRange(text: string, range: TextRange): OffsetRange {
+    const start = positionToOffset(text, range.start);
+    const end = positionToOffset(text, range.end);
+    if (end < start) {
+        throw new RangeError('Text range end must not precede its start.');
+    }
+    return { start, end };
 }
 
 export function selectBoundedSlice(
@@ -123,6 +157,44 @@ export function selectBoundedSlice(
             end: { line: endLine, character: lines[endLine]?.length ?? 0 },
         },
     };
+}
+
+function positionToOffset(text: string, position: TextPosition): number {
+    if (
+        !Number.isInteger(position.line) ||
+        !Number.isInteger(position.character) ||
+        position.line < 0 ||
+        position.character < 0
+    ) {
+        throw new RangeError('Text positions must use non-negative integer line and character values.');
+    }
+
+    let line = 0;
+    let lineStart = 0;
+    while (line < position.line) {
+        const newline = text.indexOf('\n', lineStart);
+        if (newline < 0) {
+            throw new RangeError(`Text position line ${position.line} is outside the document.`);
+        }
+        lineStart = newline + 1;
+        line += 1;
+    }
+
+    const newline = text.indexOf('\n', lineStart);
+    const physicalLineEnd = newline < 0 ? text.length : newline;
+    const logicalLineEnd =
+        physicalLineEnd > lineStart && text.charCodeAt(physicalLineEnd - 1) === 13
+            ? physicalLineEnd - 1
+            : physicalLineEnd;
+    const lineLength = logicalLineEnd - lineStart;
+
+    if (position.character > lineLength) {
+        throw new RangeError(
+            `Text position character ${position.character} exceeds line ${position.line} length ${lineLength}.`,
+        );
+    }
+
+    return lineStart + position.character;
 }
 
 function offsetToPosition(text: string, rawOffset: number): { line: number; character: number } {

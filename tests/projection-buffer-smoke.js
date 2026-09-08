@@ -10,6 +10,9 @@ function main() {
     testEditBeforeSegmentRebasesWithoutStaling();
     testInsertionAtSegmentStartBelongsToSegment();
     testInsertionAtSegmentEndDoesNotBelongToSegment();
+    testFullDeletionRemovesTargetSegment();
+    testFullReplacementKeepsStaleOwnership();
+    testDeletionDropsOnlyVanishedOwnership();
     testCrossBoundaryReplacementCoalescesStaleOwnership();
     testOldRevisionCannotPublish();
     testFreshCoverageExcludesStaleSegments();
@@ -82,6 +85,43 @@ function testInsertionAtSegmentEndDoesNotBelongToSegment() {
 
     assert.deepEqual(buffer.segments, [
         { source: { start: 5, end: 10 }, text: 'segment', stale: false },
+    ]);
+}
+
+function testFullDeletionRemovesTargetSegment() {
+    const buffer = new TargetProjectionBuffer(0);
+    buffer.applyProjection({ start: 5, end: 10 }, 'obsolete-target');
+
+    buffer.rebase([change(5, 5, '')], 1);
+
+    assert.equal(buffer.text, '');
+    assert.deepEqual(buffer.segments, []);
+    assert.equal(buffer.hasStaleSegments, false);
+    assert.deepEqual(buffer.staleRanges(), []);
+}
+
+function testFullReplacementKeepsStaleOwnership() {
+    const buffer = new TargetProjectionBuffer(0);
+    buffer.applyProjection({ start: 5, end: 10 }, 'old-target');
+
+    buffer.rebase([change(5, 5, 'xx')], 1);
+
+    assert.equal(buffer.text, 'old-target');
+    assert.deepEqual(buffer.segments, [
+        { source: { start: 5, end: 7 }, text: 'old-target', stale: true },
+    ]);
+}
+
+function testDeletionDropsOnlyVanishedOwnership() {
+    const buffer = new TargetProjectionBuffer(0);
+    buffer.applyProjection({ start: 0, end: 5 }, 'A');
+    buffer.applyProjection({ start: 5, end: 10 }, 'B');
+
+    buffer.rebase([change(0, 5, '')], 1);
+
+    assert.equal(buffer.text, 'B');
+    assert.deepEqual(buffer.segments, [
+        { source: { start: 0, end: 5 }, text: 'B', stale: false },
     ]);
 }
 
