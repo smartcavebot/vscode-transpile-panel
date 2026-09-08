@@ -8,6 +8,7 @@ const {
 
 async function main() {
     testBoundedSlice();
+    await testBoundedPriorContext();
     await testLatestWins();
     console.log('core smoke: PASS');
 }
@@ -28,6 +29,58 @@ function testBoundedSlice() {
         start: { line: 2, character: 0 },
         end: { line: 4, character: 4 },
     });
+}
+
+async function testBoundedPriorContext() {
+    const session = new ProjectionSession({
+        sourceLanguage: 'csharp',
+        targetLanguage: 'python',
+        contextLines: 0,
+        policy: { id: 'default', choices: {} },
+        harness: { id: 'none', targetLanguage: 'python', facilities: [] },
+    });
+
+    const requests = [];
+    const provider = {
+        id: 'bounded-context-smoke',
+        project(request) {
+            requests.push(request);
+            return Promise.resolve({
+                revision: request.revision,
+                text: `projection:${request.sourceRegion}`,
+            });
+        },
+    };
+
+    const range = {
+        start: { line: 2, character: 0 },
+        end: { line: 2, character: 9 },
+    };
+
+    session.invalidate(range);
+    await session.refresh({
+        uri: 'memory:///bounded.cs',
+        languageId: 'csharp',
+        version: 1,
+        text: ['secret-before', 'also-private', 'value = 1', 'private-after'].join('\n'),
+    }, provider);
+
+    session.invalidate(range);
+    await session.refresh({
+        uri: 'memory:///bounded.cs',
+        languageId: 'csharp',
+        version: 2,
+        text: ['secret-before', 'also-private', 'value = 2', 'private-after'].join('\n'),
+    }, provider);
+
+    assert.equal(requests.length, 2);
+    assert.equal(requests[0].sourceRegion, 'value = 1');
+    assert.equal(requests[0].previousSourceRegion, undefined);
+    assert.equal(requests[1].sourceRegion, 'value = 2');
+    assert.equal(requests[1].previousSourceRegion, 'value = 1');
+    assert.deepEqual(requests[1].previousSourceRange, range);
+    assert.equal(requests[1].previousSourceRegion.includes('secret-before'), false);
+    assert.equal(requests[1].previousSourceRegion.includes('private-after'), false);
 }
 
 async function testLatestWins() {
