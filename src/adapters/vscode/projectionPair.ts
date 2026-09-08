@@ -1,9 +1,13 @@
 import * as vscode from 'vscode';
 import {
+    OffsetRange,
     ProjectionCommit,
     ProjectionProvider,
     ProjectionSession,
     TargetProjectionBuffer,
+    offsetRangeToTextRange,
+    selectBoundedSlice,
+    textRangeToOffsetRange,
 } from '../../core';
 import { toCoreChanges, toCoreDocument } from './documentAdapter';
 import { ProjectionDocumentProvider, createProjectionUri } from './virtualDocument';
@@ -29,6 +33,7 @@ export class VscodeProjectionPair implements vscode.Disposable {
 
     private readonly session: ProjectionSession;
     private readonly buffer = new TargetProjectionBuffer(0);
+    private readonly contextLines: number;
     private initialized = false;
     private disposed = false;
 
@@ -40,6 +45,7 @@ export class VscodeProjectionPair implements vscode.Disposable {
         options: ProjectionPairOptions,
     ) {
         this.mode = options.mode;
+        this.contextLines = options.contextLines;
         this.targetUri = createProjectionUri(sourceUri, targetLanguage);
         this.session = new ProjectionSession({
             sourceLanguage: options.sourceLanguage,
@@ -95,6 +101,8 @@ export class VscodeProjectionPair implements vscode.Disposable {
             return undefined;
         }
 
+        this.stabilizeReplacementEnvelope(document);
+
         const commit = await this.session.refresh(toCoreDocument(document), this.provider);
         if (!commit) {
             return undefined;
@@ -124,9 +132,71 @@ export class VscodeProjectionPair implements vscode.Disposable {
         this.documents.delete(this.targetUri);
     }
 
+    /**
+     * The current core intentionally treats the entire bounded provider slice as source ownership.
+     * Therefore a context-expanded slice must never cut through an existing target segment. Widen
+     * the pending dirty requirement until the eventual bounded slice either contains or avoids every
+     * existing segment. Each iteration absorbs at least one segment, so this terminates in at most
+     * segment-count + 1 passes.
+     */
+    private stabilizeReplacementEnvelope(document: vscode.TextDocument): void {
+        const text = document.getText();
+        let required = this.session.pendingDirtyOffsets;
+        const segments = this.buffer.segments;
+
+        for (let iteration = 0; iteration <= segments.length; iteration += 1) {
+            const dirtyRange = required ? offsetRangeToTextRange(text, required) : undefined;
+            const planned = textRangeToOffsetRange(
+                text,
+                selectBoundedSlice(text, dirtyRange, this.contextLines).range,
+            );
+
+            let expanded = required;
+            let absorbed = false;
+            for (const segment of segments) {
+                if (
+                    rangesOverlap(planned, segment.source) &&
+                    !rangeContains(planned, segment.source)
+                ) {
+                    expanded = unionRanges(expanded, segment.source);
+                    absorbed = true;
+                }
+            }
+
+            if (!absorbed) {
+                if (required) {
+                    this.session.requireProjectionRange(required);
+                }
+                return;
+            }
+
+            required = expanded;
+        }
+
+        throw new Error('Projection replacement envelope did not stabilize.');
+    }
+
     private assertActive(): void {
         if (this.disposed) {
             throw new Error('Projection pair has been disposed.');
         }
     }
+}
+
+function rangesOverlap(a: OffsetRange, b: OffsetRange): boolean {
+    return a.start < b.end && b.start < a.end;
+}
+
+function rangeContains(outer: OffsetRange, inner: OffsetRange): boolean {
+    return outer.start <= inner.start && outer.end >= inner.end;
+}
+
+function unionRanges(a: OffsetRange | undefined, b: OffsetRange): OffsetRange {
+    if (!a) {
+        return { start: b.start, end: b.end };
+    }
+    return {
+        start: Math.min(a.start, b.start),
+        end: Math.max(a.end, b.end),
+    };
 }
