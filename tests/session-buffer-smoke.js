@@ -13,6 +13,7 @@ const {
 
 async function main() {
     testCrLfRangeConversion();
+    testCrLfBoundariesRespectHardCaps();
     testContextOverlapDoesNotBecomeOwnership();
     await testSessionCommitDrivesProjectionBuffer();
     await testBoundedCoverageFocusDoesNotGrow();
@@ -35,6 +36,36 @@ function testCrLfRangeConversion() {
             end: { line: 1, character: 10 },
         }),
         /exceeds line 1 length 9/,
+    );
+
+    assert.throws(
+        () => offsetRangeToTextRange(text, { start: 6, end: 7 }),
+        /between the CR and LF/,
+    );
+}
+
+function testCrLfBoundariesRespectHardCaps() {
+    const text = 'abc\r\ndef\r\nghi';
+    const focus = { start: 5, end: 6 };
+    const context = selectBoundedContext(text, focus, 10, 4);
+    const contextOffsets = textRangeToOffsetRange(text, context.range);
+
+    assert.deepEqual(contextOffsets, { start: 5, end: 8 });
+    assert.equal(context.text, 'def');
+    assert.ok(context.text.length <= 4);
+
+    const first = selectCoverageRequirement(text, { start: 0, end: text.length }, 100, 4);
+    assert.deepEqual(first, { start: 0, end: 3 });
+    assert.ok(first.end - first.start <= 4);
+
+    const second = selectCoverageRequirement(text, { start: 3, end: text.length }, 100, 4);
+    assert.deepEqual(second, { start: 3, end: 7 });
+    assert.ok(second.end - second.start <= 4);
+    assert.doesNotThrow(() => offsetRangeToTextRange(text, second));
+
+    assert.throws(
+        () => selectCoverageRequirement(text, { start: 3, end: text.length }, 100, 1),
+        /too small to keep a CRLF sequence atomic/,
     );
 }
 
@@ -136,6 +167,9 @@ async function testSessionCommitDrivesProjectionBuffer() {
     assert.ok(secondCommit);
     assert.equal(requests[1].sourceRegion, source2);
     assert.equal(requests[1].focusRegion, '2');
+    assert.equal(requests[1].previousSourceRegion, '1');
+    assert.deepEqual(requests[1].previousSourceRange, firstCommit.sourceRange);
+    assert.equal(requests[1].previousProjection, 'py:1');
     assert.deepEqual(secondCommit.sourceOffsets, { start: 15, end: 16 });
     assert.equal(secondCommit.text, 'py:2');
 
