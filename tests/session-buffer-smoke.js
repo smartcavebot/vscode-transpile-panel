@@ -4,11 +4,15 @@ const assert = require('node:assert/strict');
 const {
     ProjectionSession,
     TargetProjectionBuffer,
+    offsetRangeToTextRange,
+    selectBoundedSlice,
+    stabilizeProjectionRequirement,
     textRangeToOffsetRange,
 } = require('../.core-test/core');
 
 async function main() {
     testCrLfRangeConversion();
+    testReplacementRequirementAbsorbsPartialSegments();
     await testSessionCommitDrivesProjectionBuffer();
     console.log('session buffer smoke: PASS');
 }
@@ -30,6 +34,54 @@ function testCrLfRangeConversion() {
         }),
         /exceeds line 1 length 9/,
     );
+}
+
+function testReplacementRequirementAbsorbsPartialSegments() {
+    const lines = Array.from({ length: 60 }, (_, index) => `line-${index}`);
+    const text = lines.join('\n');
+    const ownedA = lineRange(text, lines, 0, 24);
+    const ownedB = lineRange(text, lines, 30, 40);
+    const dirty = textRangeToOffsetRange(text, {
+        start: { line: 20, character: 2 },
+        end: { line: 20, character: 3 },
+    });
+
+    // The raw dirty slice with 12 lines of context is lines 8..32. It cuts through
+    // both existing ownership ranges, so publishing it would be a forbidden partial
+    // target-segment replacement.
+    const rawPlanned = textRangeToOffsetRange(
+        text,
+        selectBoundedSlice(text, offsetRangeToTextRange(text, dirty), 12).range,
+    );
+    assert.ok(rawPlanned.start > ownedA.start && rawPlanned.start < ownedA.end);
+    assert.ok(rawPlanned.end > ownedB.start && rawPlanned.end < ownedB.end);
+
+    const required = stabilizeProjectionRequirement(
+        text,
+        dirty,
+        12,
+        [ownedA, ownedB],
+    );
+
+    assert.deepEqual(required, {
+        start: ownedA.start,
+        end: ownedB.end,
+    });
+
+    const stabilizedPlanned = textRangeToOffsetRange(
+        text,
+        selectBoundedSlice(
+            text,
+            offsetRangeToTextRange(text, required),
+            12,
+        ).range,
+    );
+
+    assert.ok(stabilizedPlanned.start <= ownedA.start);
+    assert.ok(stabilizedPlanned.end >= ownedA.end);
+    assert.ok(stabilizedPlanned.start <= ownedB.start);
+    assert.ok(stabilizedPlanned.end >= ownedB.end);
+    assert.ok(required.end < text.length, 'ownership widening must not become a whole-file fallback');
 }
 
 async function testSessionCommitDrivesProjectionBuffer() {
@@ -98,6 +150,13 @@ async function testSessionCommitDrivesProjectionBuffer() {
         { start: 0, end: 7 },
         { start: 16, end: source2.length },
     ]);
+}
+
+function lineRange(text, lines, startLine, endLine) {
+    return textRangeToOffsetRange(text, {
+        start: { line: startLine, character: 0 },
+        end: { line: endLine, character: lines[endLine].length },
+    });
 }
 
 function document(version, text) {

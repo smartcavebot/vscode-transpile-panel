@@ -50,6 +50,12 @@ export class ProjectionSession {
         return this.revision;
     }
 
+    get pendingDirtyOffsets(): OffsetRange | undefined {
+        return this.dirtyOffsets
+            ? { start: this.dirtyOffsets.start, end: this.dirtyOffsets.end }
+            : undefined;
+    }
+
     cancelActive(): void {
         this.cancellation?.cancel();
     }
@@ -67,6 +73,17 @@ export class ProjectionSession {
         }
 
         return this.revision;
+    }
+
+    /**
+     * Widen the next projection request without advancing the source revision.
+     *
+     * Hosts use this when target ownership invariants require a larger replacement envelope than
+     * the raw edit itself (for example, to avoid partially replacing an existing target segment).
+     */
+    requireProjectionRange(range: OffsetRange): void {
+        assertNonEmptyOffsetRange(range);
+        this.dirtyOffsets = unionOffsetRanges(this.dirtyOffsets, range);
     }
 
     async refresh(
@@ -157,6 +174,72 @@ export function selectBoundedSlice(
             end: { line: endLine, character: lines[endLine]?.length ?? 0 },
         },
     };
+}
+
+/**
+ * Expand a pending dirty requirement until the context-expanded bounded slice will never cut
+ * through an existing source-owned target segment.
+ *
+ * This preserves the projection-buffer invariant that replacements own complete segments. Each
+ * loop absorbs at least one previously partial segment, so the process terminates in at most the
+ * number of owned ranges plus one pass.
+ */
+export function stabilizeProjectionRequirement(
+    text: string,
+    pendingDirtyOffsets: OffsetRange | undefined,
+    contextLines: number,
+    ownedRanges: readonly OffsetRange[],
+): OffsetRange | undefined {
+    for (const range of ownedRanges) {
+        assertNonEmptyOffsetRange(range);
+    }
+
+    let required = pendingDirtyOffsets
+        ? { start: pendingDirtyOffsets.start, end: pendingDirtyOffsets.end }
+        : undefined;
+
+    for (let iteration = 0; iteration <= ownedRanges.length; iteration += 1) {
+        const dirtyRange = required ? offsetRangeToTextRange(text, required) : undefined;
+        const planned = textRangeToOffsetRange(
+            text,
+            selectBoundedSlice(text, dirtyRange, contextLines).range,
+        );
+
+        let expanded = required;
+        let absorbed = false;
+        for (const owned of ownedRanges) {
+            if (rangesOverlap(planned, owned) && !rangeContains(planned, owned)) {
+                expanded = unionOffsetRanges(expanded, owned);
+                absorbed = true;
+            }
+        }
+
+        if (!absorbed) {
+            return required;
+        }
+        required = expanded;
+    }
+
+    throw new Error('Projection replacement requirement did not stabilize.');
+}
+
+function assertNonEmptyOffsetRange(range: OffsetRange): void {
+    if (
+        !Number.isInteger(range.start) ||
+        !Number.isInteger(range.end) ||
+        range.start < 0 ||
+        range.end <= range.start
+    ) {
+        throw new RangeError('Required projection range must be a non-empty half-open offset range.');
+    }
+}
+
+function rangesOverlap(a: OffsetRange, b: OffsetRange): boolean {
+    return a.start < b.end && b.start < a.end;
+}
+
+function rangeContains(outer: OffsetRange, inner: OffsetRange): boolean {
+    return outer.start <= inner.start && outer.end >= inner.end;
 }
 
 function positionToOffset(text: string, position: TextPosition): number {

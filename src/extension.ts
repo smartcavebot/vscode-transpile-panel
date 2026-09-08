@@ -1,77 +1,158 @@
 import * as vscode from 'vscode';
-import { TranslatePanel } from './webview/TranslatePanel';
+import {
+    PROJECTION_SCHEME,
+    ProjectionDocumentProvider,
+    ProjectionPairMode,
+    VscodeProjectionPair,
+} from './adapters/vscode';
+import { ScaffoldProjectionProvider } from './providers/ScaffoldProjectionProvider';
 
-export function activate(context: vscode.ExtensionContext) {
-    const openPreviewCommand = vscode.commands.registerCommand(
-        'translatePanel.openPreview',
-        () => {
-            TranslatePanel.createOrShow(context.extensionUri);
-        }
+type RefreshMode = 'manual' | 'debounced';
+
+export function activate(context: vscode.ExtensionContext): void {
+    const documents = new ProjectionDocumentProvider();
+    const provider = new ScaffoldProjectionProvider();
+    let activePair: VscodeProjectionPair | undefined;
+    let debounceTimer: NodeJS.Timeout | undefined;
+    let openingPair = false;
+
+    context.subscriptions.push(
+        documents,
+        vscode.workspace.registerTextDocumentContentProvider(PROJECTION_SCHEME, documents),
     );
 
-    context.subscriptions.push(openPreviewCommand);
+    const clearDebounce = (): void => {
+        if (debounceTimer) {
+            clearTimeout(debounceTimer);
+            debounceTimer = undefined;
+        }
+    };
 
-        // Listen for active editor changes
-        context.subscriptions.push(
-            vscode.window.onDidChangeActiveTextEditor((editor) => {
-                if (editor && TranslatePanel.currentPanel) {
-                    TranslatePanel.currentPanel.updateContent(editor.document);
-                }
-            })
-        );
+    const disposePair = (): void => {
+        clearDebounce();
+        activePair?.dispose();
+        activePair = undefined;
+    };
 
-        // Listen for scroll changes (visible range)
-        context.subscriptions.push(
-            vscode.window.onDidChangeTextEditorVisibleRanges((event) => {
-                if (TranslatePanel.currentPanel && event.visibleRanges.length > 0) {
-                    const activeEditor = vscode.window.activeTextEditor;
-                    if (activeEditor && activeEditor === event.textEditor) {
-                        const firstVisibleLine = event.visibleRanges[0].start.line;
-                        const lastVisibleLine = event.visibleRanges[0].end.line;
-                        const visibleLineCount = lastVisibleLine - firstVisibleLine;
-                        const totalLines = activeEditor.document.lineCount;
+    const sourceDocumentForPair = (): vscode.TextDocument | undefined => {
+        if (!activePair) {
+            return undefined;
+        }
+        const key = activePair.sourceUri.toString();
+        return vscode.workspace.textDocuments.find((document) => document.uri.toString() === key);
+    };
 
-                        const effectiveMax = Math.max(1, totalLines - visibleLineCount);
-                        const percentage = Math.min(1, firstVisibleLine / effectiveMax);
+    const refreshPair = async (document?: vscode.TextDocument): Promise<void> => {
+        const pair = activePair;
+        const source = document ?? sourceDocumentForPair();
+        if (!pair || !source || !pair.matches(source)) {
+            return;
+        }
+        await pair.refresh(source);
+    };
 
-                        TranslatePanel.currentPanel.syncScroll(percentage);
-                    }
-                }
-            })
-        );
+    const scheduleRefresh = (document: vscode.TextDocument): void => {
+        const config = vscode.workspace.getConfiguration('transpilePanel');
+        const mode = config.get<RefreshMode>('refreshMode', 'debounced');
+        if (mode !== 'debounced') {
+            return;
+        }
 
-        // Listen for document changes based on updateMode
-        context.subscriptions.push(
-            vscode.workspace.onDidChangeTextDocument((event) => {
-                const config = vscode.workspace.getConfiguration('translatePanel');
-                const updateMode = config.get<string>('updateMode', 'onSave');
+        clearDebounce();
+        const delay = Math.max(100, config.get<number>('debounceMs', 750));
+        debounceTimer = setTimeout(() => {
+            debounceTimer = undefined;
+            void refreshPair(document).catch(reportError);
+        }, delay);
+    };
 
-                if (updateMode === 'onType' && TranslatePanel.currentPanel) {
-                    const activeEditor = vscode.window.activeTextEditor;
-                    if (activeEditor && activeEditor.document === event.document) {
-                        TranslatePanel.currentPanel.updateContentDebounced(event.document);
-                    }
-                }
-            })
-        );
+    const openForEditor = async (editor: vscode.TextEditor): Promise<void> => {
+        if (openingPair || editor.document.uri.scheme === PROJECTION_SCHEME) {
+            return;
+        }
 
-        // Listen for document save
-        context.subscriptions.push(
-            vscode.workspace.onDidSaveTextDocument((document) => {
-                const config = vscode.workspace.getConfiguration('translatePanel');
-                const updateMode = config.get<string>('updateMode', 'onSave');
+        openingPair = true;
+        try {
+            const config = vscode.workspace.getConfiguration('transpilePanel');
+            const targetLanguage = config.get<string>('targetLanguage', 'python').trim() || 'python';
+            const mode = config.get<ProjectionPairMode>('pairingMode', 'pinned');
+            const contextLines = Math.max(0, config.get<number>('contextLines', 12));
 
-                if (updateMode === 'onSave' && TranslatePanel.currentPanel) {
-                    const activeEditor = vscode.window.activeTextEditor;
-                    if (activeEditor && activeEditor.document === document) {
-                        TranslatePanel.currentPanel.updateContent(document);
-                    }
-                }
-            })
-        );
+            disposePair();
+            const pair = new VscodeProjectionPair(
+                editor.document.uri,
+                targetLanguage,
+                provider,
+                documents,
+                {
+                    sourceLanguage: editor.document.languageId,
+                    targetLanguage,
+                    contextLines,
+                    mode,
+                },
+            );
+            activePair = pair;
 
+            await pair.initialize(editor.document);
+            const opened = await vscode.workspace.openTextDocument(pair.targetUri);
+            const targetDocument = await vscode.languages.setTextDocumentLanguage(opened, targetLanguage);
+            await vscode.window.showTextDocument(targetDocument, {
+                viewColumn: vscode.ViewColumn.Beside,
+                preserveFocus: true,
+                preview: false,
+            });
+        } finally {
+            openingPair = false;
+        }
+    };
+
+    context.subscriptions.push(
+        vscode.commands.registerCommand('transpilePanel.open', () => {
+            const editor = vscode.window.activeTextEditor;
+            if (!editor || editor.document.uri.scheme === PROJECTION_SCHEME) {
+                return;
+            }
+            return openForEditor(editor).catch(reportError);
+        }),
+        vscode.commands.registerCommand('transpilePanel.refresh', () => {
+            clearDebounce();
+            return refreshPair().catch(reportError);
+        }),
+        vscode.workspace.onDidChangeTextDocument((event) => {
+            const pair = activePair;
+            if (!pair || !pair.matches(event.document)) {
+                return;
+            }
+
+            if (pair.applySourceChange(event)) {
+                scheduleRefresh(event.document);
+            }
+        }),
+        vscode.window.onDidChangeActiveTextEditor((editor) => {
+            const pair = activePair;
+            if (
+                !editor ||
+                editor.document.uri.scheme === PROJECTION_SCHEME ||
+                openingPair ||
+                !pair ||
+                pair.mode !== 'followActive' ||
+                pair.matches(editor.document)
+            ) {
+                return;
+            }
+            void openForEditor(editor).catch(reportError);
+        }),
+        {
+            dispose: disposePair,
+        },
+    );
 }
 
-export function deactivate() {
-    // Cleanup if needed
+export function deactivate(): void {
+    // VS Code disposes activation subscriptions.
+}
+
+function reportError(error: unknown): void {
+    const message = error instanceof Error ? error.message : String(error);
+    void vscode.window.showErrorMessage(`Transpile Panel: ${message}`);
 }
