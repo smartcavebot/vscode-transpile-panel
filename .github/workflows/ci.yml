@@ -24,3 +24,9 @@ jobs:
 
       - name: Typecheck
         run: npm run check-types
+
+      - name: Enforce host-neutral core
+        run: npm run check:host-neutral
+
+      - name: Headless core smoke test
+        run: npm run test:core
