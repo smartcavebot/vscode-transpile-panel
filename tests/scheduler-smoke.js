@@ -11,6 +11,7 @@ async function main() {
     await testDebouncedModeUsesLatestSnapshot();
     await testSemanticMode();
     await testModeChangeCancelsPendingDebounce();
+    await testDisposeCancelsInFlightProjection();
     testDisposeIsTerminal();
     console.log('scheduler smoke: PASS');
 }
@@ -141,6 +142,42 @@ async function testModeChangeCancelsPendingDebounce() {
 
     await scheduler.refreshNow();
     assert.equal(requests.length, 1);
+}
+
+async function testDisposeCancelsInFlightProjection() {
+    let release;
+    let signal;
+    const results = [];
+    const session = makeSession();
+    const provider = {
+        id: 'blocking-provider',
+        project(request) {
+            signal = request.signal;
+            return new Promise((resolve) => {
+                release = () => resolve({
+                    revision: request.revision,
+                    text: 'must-not-publish',
+                });
+            });
+        },
+    };
+    const scheduler = new ProjectionRefreshScheduler(session, provider, {
+        mode: 'manual',
+        debounceMs: 10,
+        onResult: (result) => results.push(result),
+    });
+
+    scheduler.onDocumentChanged(document(0, 'value = 0'), []);
+    const pending = scheduler.refreshNow();
+
+    assert.equal(signal.aborted, false);
+    scheduler.dispose();
+    assert.equal(signal.aborted, true);
+
+    release();
+    const result = await pending;
+    assert.equal(result, undefined);
+    assert.equal(results.length, 0);
 }
 
 function testDisposeIsTerminal() {
