@@ -5,15 +5,17 @@ const {
     ProjectionSession,
     TargetProjectionBuffer,
     offsetRangeToTextRange,
-    selectBoundedSlice,
+    selectBoundedContext,
+    selectCoverageRequirement,
     stabilizeProjectionRequirement,
     textRangeToOffsetRange,
 } = require('../.core-test/core');
 
 async function main() {
     testCrLfRangeConversion();
-    testReplacementRequirementAbsorbsPartialSegments();
+    testContextOverlapDoesNotBecomeOwnership();
     await testSessionCommitDrivesProjectionBuffer();
+    await testBoundedCoverageFocusDoesNotGrow();
     console.log('session buffer smoke: PASS');
 }
 
@@ -36,7 +38,7 @@ function testCrLfRangeConversion() {
     );
 }
 
-function testReplacementRequirementAbsorbsPartialSegments() {
+function testContextOverlapDoesNotBecomeOwnership() {
     const lines = Array.from({ length: 60 }, (_, index) => `line-${index}`);
     const text = lines.join('\n');
     const ownedA = lineRange(text, lines, 0, 24);
@@ -46,59 +48,53 @@ function testReplacementRequirementAbsorbsPartialSegments() {
         end: { line: 20, character: 3 },
     });
 
-    // The raw dirty slice with 12 lines of context is lines 8..32. It cuts through
-    // both existing ownership ranges, so publishing it would be a forbidden partial
-    // target-segment replacement.
-    const rawPlanned = textRangeToOffsetRange(
-        text,
-        selectBoundedSlice(text, offsetRangeToTextRange(text, dirty), 12).range,
-    );
-    assert.ok(rawPlanned.start > ownedA.start && rawPlanned.start < ownedA.end);
-    assert.ok(rawPlanned.end > ownedB.start && rawPlanned.end < ownedB.end);
-
+    // The exact focus is inside A, so ownership must absorb A only.
     const required = stabilizeProjectionRequirement(
         text,
         dirty,
-        12,
         [ownedA, ownedB],
     );
+    assert.deepEqual(required, ownedA);
 
-    assert.deepEqual(required, {
-        start: ownedA.start,
-        end: ownedB.end,
-    });
-
-    const stabilizedPlanned = textRangeToOffsetRange(
+    // Provider context around that exact ownership may legitimately cut through B.
+    // Context is advisory; it must not force B into target ownership.
+    const contextOffsets = textRangeToOffsetRange(
         text,
-        selectBoundedSlice(
-            text,
-            offsetRangeToTextRange(text, required),
-            12,
-        ).range,
+        selectBoundedContext(text, required, 12, 10000).range,
     );
+    assert.ok(contextOffsets.start <= ownedA.start);
+    assert.ok(contextOffsets.end > ownedB.start && contextOffsets.end < ownedB.end);
+    assert.ok(required.end < ownedB.start);
 
-    assert.ok(stabilizedPlanned.start <= ownedA.start);
-    assert.ok(stabilizedPlanned.end >= ownedA.end);
-    assert.ok(stabilizedPlanned.start <= ownedB.start);
-    assert.ok(stabilizedPlanned.end >= ownedB.end);
-    assert.ok(required.end < text.length, 'ownership widening must not become a whole-file fallback');
+    // If the focus itself cuts both segments, stabilization still absorbs both.
+    const crossingFocus = {
+        start: ownedA.end - 2,
+        end: ownedB.start + 2,
+    };
+    assert.deepEqual(
+        stabilizeProjectionRequirement(text, crossingFocus, [ownedA, ownedB]),
+        { start: ownedA.start, end: ownedB.end },
+    );
 }
 
 async function testSessionCommitDrivesProjectionBuffer() {
     const session = new ProjectionSession({
         sourceLanguage: 'csharp',
         targetLanguage: 'python',
-        contextLines: 0,
+        contextLines: 1,
+        maxContextCharacters: 1000,
         policy: { id: 'default', choices: {} },
         harness: { id: 'none', targetLanguage: 'python', facilities: [] },
     });
     const buffer = new TargetProjectionBuffer(0);
+    const requests = [];
     const provider = {
         id: 'session-buffer-smoke',
         project(request) {
+            requests.push(request);
             return Promise.resolve({
                 revision: request.revision,
-                text: `py:${request.sourceRegion}`,
+                text: `py:${request.focusRegion}`,
             });
         },
     };
@@ -112,19 +108,21 @@ async function testSessionCommitDrivesProjectionBuffer() {
     const firstCommit = await session.refresh(document(1, source1), provider);
 
     assert.ok(firstCommit);
+    assert.equal(requests[0].sourceRegion, source1);
+    assert.equal(requests[0].focusRegion, '1');
     assert.deepEqual(firstCommit.sourceRange, {
-        start: { line: 1, character: 0 },
+        start: { line: 1, character: 8 },
         end: { line: 1, character: 9 },
     });
-    assert.deepEqual(firstCommit.sourceOffsets, { start: 7, end: 16 });
-    assert.equal(firstCommit.text, 'py:value = 1');
+    assert.deepEqual(firstCommit.sourceOffsets, { start: 15, end: 16 });
+    assert.equal(firstCommit.text, 'py:1');
 
     buffer.applyProjection(
         firstCommit.sourceOffsets,
         firstCommit.text,
         firstCommit.revision,
     );
-    assert.equal(buffer.text, 'py:value = 1');
+    assert.equal(buffer.text, 'py:1');
     assert.equal(buffer.hasStaleSegments, false);
 
     const secondEdit = change(source1.indexOf('1'), 1, '2');
@@ -136,20 +134,88 @@ async function testSessionCommitDrivesProjectionBuffer() {
 
     const secondCommit = await session.refresh(document(2, source2), provider);
     assert.ok(secondCommit);
-    assert.deepEqual(secondCommit.sourceOffsets, { start: 7, end: 16 });
-    assert.equal(secondCommit.text, 'py:value = 2');
+    assert.equal(requests[1].sourceRegion, source2);
+    assert.equal(requests[1].focusRegion, '2');
+    assert.deepEqual(secondCommit.sourceOffsets, { start: 15, end: 16 });
+    assert.equal(secondCommit.text, 'py:2');
 
     buffer.applyProjection(
         secondCommit.sourceOffsets,
         secondCommit.text,
         secondCommit.revision,
     );
-    assert.equal(buffer.text, 'py:value = 2');
+    assert.equal(buffer.text, 'py:2');
     assert.equal(buffer.hasStaleSegments, false);
     assert.deepEqual(buffer.freshCoverageGaps(source2.length), [
-        { start: 0, end: 7 },
+        { start: 0, end: 15 },
         { start: 16, end: source2.length },
     ]);
+}
+
+async function testBoundedCoverageFocusDoesNotGrow() {
+    const source = 'x'.repeat(13000);
+    const session = new ProjectionSession({
+        sourceLanguage: 'csharp',
+        targetLanguage: 'python',
+        contextLines: 80,
+        maxContextCharacters: 7000,
+        policy: { id: 'default', choices: {} },
+        harness: { id: 'none', targetLanguage: 'python', facilities: [] },
+    });
+    const buffer = new TargetProjectionBuffer(0);
+    const requests = [];
+    const provider = {
+        id: 'bounded-coverage-smoke',
+        project(request) {
+            requests.push(request);
+            return Promise.resolve({
+                revision: request.revision,
+                text: request.focusRegion,
+            });
+        },
+    };
+
+    const revision = session.invalidate();
+    buffer.rebase([], revision);
+
+    while (true) {
+        const gap = buffer.coverageGaps(source.length)[0];
+        if (!gap) {
+            break;
+        }
+
+        const selected = selectCoverageRequirement(source, gap, 80, 4000);
+        const required = stabilizeProjectionRequirement(
+            source,
+            selected,
+            buffer.segments.map((segment) => segment.source),
+        );
+        assert.ok(required);
+        session.requireProjectionRange(required);
+
+        const commit = await session.refresh(document(revision, source), provider);
+        assert.ok(commit);
+        buffer.applyProjection(commit.sourceOffsets, commit.text, commit.revision);
+    }
+
+    assert.deepEqual(
+        buffer.segments.map((segment) => segment.source),
+        [
+            { start: 0, end: 4000 },
+            { start: 4000, end: 8000 },
+            { start: 8000, end: 12000 },
+            { start: 12000, end: 13000 },
+        ],
+    );
+    assert.equal(buffer.text, source);
+    assert.equal(requests.length, 4);
+    assert.ok(requests.every((request) => request.focusRegion.length <= 4000));
+    assert.ok(requests.every((request) => request.sourceRegion.length <= 7000));
+    assert.ok(requests.every((request) => request.sourceRegion.length < source.length));
+    assert.ok(
+        requests[1].sourceRegion.length > requests[1].focusRegion.length,
+        'provider context should be allowed to overlap prior ownership without enlarging focus',
+    );
 }
 
 function lineRange(text, lines, startLine, endLine) {
