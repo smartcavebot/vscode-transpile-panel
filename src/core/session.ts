@@ -50,6 +50,12 @@ export class ProjectionSession {
         return this.revision;
     }
 
+    get pendingDirtyOffsets(): OffsetRange | undefined {
+        return this.dirtyOffsets
+            ? { start: this.dirtyOffsets.start, end: this.dirtyOffsets.end }
+            : undefined;
+    }
+
     cancelActive(): void {
         this.cancellation?.cancel();
     }
@@ -67,6 +73,17 @@ export class ProjectionSession {
         }
 
         return this.revision;
+    }
+
+    /**
+     * Widen the next projection request without advancing the source revision.
+     *
+     * Hosts use this when target ownership invariants require a larger replacement envelope than
+     * the raw edit itself (for example, to avoid partially replacing an existing target segment).
+     */
+    requireProjectionRange(range: OffsetRange): void {
+        assertNonEmptyOffsetRange(range);
+        this.dirtyOffsets = unionOffsetRanges(this.dirtyOffsets, range);
     }
 
     async refresh(
@@ -157,6 +174,17 @@ export function selectBoundedSlice(
             end: { line: endLine, character: lines[endLine]?.length ?? 0 },
         },
     };
+}
+
+function assertNonEmptyOffsetRange(range: OffsetRange): void {
+    if (
+        !Number.isInteger(range.start) ||
+        !Number.isInteger(range.end) ||
+        range.start < 0 ||
+        range.end <= range.start
+    ) {
+        throw new RangeError('Required projection range must be a non-empty half-open offset range.');
+    }
 }
 
 function positionToOffset(text: string, position: TextPosition): number {
