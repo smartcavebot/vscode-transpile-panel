@@ -152,7 +152,11 @@ export function selectBoundedSlice(
 function normalizeChanges(changes: readonly TextChange[]): readonly TextChange[] {
     const normalized = changes
         .map((change, index) => ({ change, index }))
-        .sort((a, b) => a.change.rangeOffset - b.change.rangeOffset || a.index - b.index)
+        .sort((a, b) =>
+            a.change.rangeOffset - b.change.rangeOffset ||
+            a.change.rangeLength - b.change.rangeLength ||
+            a.index - b.index,
+        )
         .map(({ change }) => change);
 
     let previousEnd = -1;
