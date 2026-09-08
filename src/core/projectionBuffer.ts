@@ -77,7 +77,7 @@ export class TargetProjectionBuffer {
             stale: false,
         });
         retained.sort(compareSegmentsBySource);
-        assertNonOverlapping(retained);
+        assertValidSegments(retained);
         this.values = retained;
     }
 
@@ -85,9 +85,11 @@ export class TargetProjectionBuffer {
      * Advance source ownership through a later source revision.
      *
      * Untouched segments remain fresh and simply move with edits before them. A segment
-     * touched by an edit becomes stale. If one replacement causes two stale ownership
-     * ranges to overlap, they are conservatively coalesced: preserving exact target text
-     * order while discarding a source boundary that is no longer trustworthy.
+     * touched by an edit becomes stale. If the source text owned by a segment is deleted
+     * completely, the corresponding target segment disappears immediately rather than
+     * surviving as zero-width ghost ownership. If one replacement causes surviving stale
+     * ownership ranges to overlap, they are conservatively coalesced: preserving exact
+     * target text order while discarding a source boundary that is no longer trustworthy.
      */
     rebase(changes: readonly TextChange[], nextRevision: number): void {
         assertRevision(nextRevision);
@@ -99,14 +101,17 @@ export class TargetProjectionBuffer {
 
         const normalized = normalizeTextChanges(changes);
         if (normalized.length > 0) {
-            const rebased = this.values.map((segment) => ({
-                source: rebaseTrackedOffsetRange(segment.source, normalized),
-                text: segment.text,
-                stale:
-                    segment.stale ||
-                    normalized.some((change) => changeTouchesTrackedRange(segment.source, change)),
-            }));
+            const rebased = this.values
+                .map((segment) => ({
+                    source: rebaseTrackedOffsetRange(segment.source, normalized),
+                    text: segment.text,
+                    stale:
+                        segment.stale ||
+                        normalized.some((change) => changeTouchesTrackedRange(segment.source, change)),
+                }))
+                .filter((segment) => segment.source.end > segment.source.start);
             this.values = coalesceOverlappingSegments(rebased);
+            assertValidSegments(this.values);
         }
 
         this.sourceRevision = nextRevision;
@@ -210,7 +215,10 @@ function mergeOverlappingRanges(ranges: readonly OffsetRange[]): readonly Offset
     return result;
 }
 
-function assertNonOverlapping(segments: readonly ProjectionSegment[]): void {
+function assertValidSegments(segments: readonly ProjectionSegment[]): void {
+    for (const segment of segments) {
+        assertSourceRange(segment.source);
+    }
     for (let index = 1; index < segments.length; index += 1) {
         if (rangesOverlap(segments[index - 1].source, segments[index].source)) {
             throw new Error('Projection buffer contains overlapping source ownership.');
