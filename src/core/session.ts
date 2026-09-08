@@ -133,8 +133,10 @@ export class ProjectionSession {
             return undefined;
         }
 
-        this.previousSourceRegion = context.text;
-        this.previousSourceRange = context.range;
+        // The previous source fields must describe the exact source that produced
+        // previousProjection, not the wider provider context that merely informed it.
+        this.previousSourceRegion = focusRegion;
+        this.previousSourceRange = focusRange;
         this.previousProjection = result.text;
         this.dirtyOffsets = undefined;
 
@@ -148,6 +150,8 @@ export class ProjectionSession {
 
 export function offsetRangeToTextRange(text: string, range: OffsetRange): TextRange {
     assertOffsetRangeWithinText(range, text.length, true);
+    assertRepresentableOffset(text, range.start);
+    assertRepresentableOffset(text, range.end);
     return {
         start: offsetToPosition(text, range.start),
         end: offsetToPosition(text, range.end),
@@ -189,7 +193,8 @@ export function selectBoundedSlice(
 
 /**
  * Select provider context around an exact focus while enforcing both line and character bounds.
- * The returned context always contains the entire focus.
+ * The returned context always contains the entire focus and never exposes a text-position boundary
+ * between the two code units of a CRLF sequence.
  */
 export function selectBoundedContext(
     text: string,
@@ -198,6 +203,8 @@ export function selectBoundedContext(
     maxCharacters = DEFAULT_MAX_CONTEXT_CHARACTERS,
 ): ProjectionSlice {
     assertOffsetRangeWithinText(focus, text.length, false);
+    assertRepresentableOffset(text, focus.start);
+    assertRepresentableOffset(text, focus.end);
     if (!Number.isInteger(maxCharacters) || maxCharacters <= 0) {
         throw new RangeError('Maximum context characters must be a positive integer.');
     }
@@ -234,6 +241,18 @@ export function selectBoundedContext(
         }
     }
 
+    // Raw character caps can land between '\r' and '\n'. Move such context boundaries inward;
+    // this only removes advisory context, never focus, and therefore preserves the hard cap.
+    if (isInsideCrLf(text, start)) {
+        start += 1;
+    }
+    if (isInsideCrLf(text, end)) {
+        end -= 1;
+    }
+    if (start > focus.start || end < focus.end) {
+        throw new Error('CRLF context normalization would exclude the projection focus.');
+    }
+
     return sliceFromOffsets(text, { start, end });
 }
 
@@ -251,12 +270,15 @@ export function normalizeProjectionFocus(
     }
     assertOffsetRangeWithinText(requested, text.length, true);
     if (requested.end > requested.start) {
+        assertRepresentableOffset(text, requested.start);
+        assertRepresentableOffset(text, requested.end);
         return { start: requested.start, end: requested.end };
     }
     if (text.length === 0) {
         return undefined;
     }
 
+    assertRepresentableOffset(text, requested.start);
     const point = requested.start;
     const probe = Math.min(point, text.length - 1);
     const previousNewline = text.lastIndexOf('\n', Math.max(-1, probe - 1));
@@ -288,6 +310,8 @@ export function stabilizeProjectionRequirement(
 ): OffsetRange | undefined {
     for (const range of ownedRanges) {
         assertOffsetRangeWithinText(range, text.length, false);
+        assertRepresentableOffset(text, range.start);
+        assertRepresentableOffset(text, range.end);
     }
 
     let required = normalizeProjectionFocus(text, pendingDirtyOffsets);
@@ -326,6 +350,8 @@ export function selectCoverageRequirement(
     maxCharacters: number,
 ): OffsetRange {
     assertOffsetRangeWithinText(gap, text.length, false);
+    assertRepresentableOffset(text, gap.start);
+    assertRepresentableOffset(text, gap.end);
     if (!Number.isInteger(maxLines) || maxLines <= 0) {
         throw new RangeError('Coverage focus lines must be a positive integer.');
     }
@@ -348,16 +374,27 @@ export function selectCoverageRequirement(
         lines += 1;
     }
 
-    if (
-        end < gap.end &&
-        end > gap.start &&
-        text.charCodeAt(end - 1) === 13 &&
-        text.charCodeAt(end) === 10
-    ) {
-        end = Math.min(gap.end, end + 1);
+    if (isInsideCrLf(text, end)) {
+        // Prefer shrinking the focus so the character cap remains hard. If the gap itself begins
+        // with CRLF and the cap is one character, no non-empty representable focus can satisfy it.
+        if (end - 1 > gap.start) {
+            end -= 1;
+        } else if (end + 1 <= gap.end && end + 1 - gap.start <= maxCharacters) {
+            end += 1;
+        } else {
+            throw new RangeError(
+                'Coverage character bound is too small to keep a CRLF sequence atomic.',
+            );
+        }
     }
 
-    return { start: gap.start, end: Math.max(gap.start + 1, end) };
+    const result = { start: gap.start, end: Math.max(gap.start + 1, end) };
+    assertRepresentableOffset(text, result.start);
+    assertRepresentableOffset(text, result.end);
+    if (result.end - result.start > maxCharacters) {
+        throw new Error('Coverage focus exceeded its hard character bound.');
+    }
+    return result;
 }
 
 function sliceFromOffsets(text: string, range: OffsetRange): ProjectionSlice {
@@ -393,6 +430,21 @@ function assertOffsetRangeWithinText(
     if (range.end > textLength) {
         throw new RangeError(`Offset range ends at ${range.end}, beyond text length ${textLength}.`);
     }
+}
+
+function assertRepresentableOffset(text: string, offset: number): void {
+    if (isInsideCrLf(text, offset)) {
+        throw new RangeError(`Offset ${offset} falls between the CR and LF of a CRLF sequence.`);
+    }
+}
+
+function isInsideCrLf(text: string, offset: number): boolean {
+    return (
+        offset > 0 &&
+        offset < text.length &&
+        text.charCodeAt(offset - 1) === 13 &&
+        text.charCodeAt(offset) === 10
+    );
 }
 
 function rangesOverlap(a: OffsetRange, b: OffsetRange): boolean {
