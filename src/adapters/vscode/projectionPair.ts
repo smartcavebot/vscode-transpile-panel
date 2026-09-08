@@ -11,6 +11,7 @@ import { ProjectionDocumentProvider, createProjectionUri } from './virtualDocume
 export type ProjectionPairMode = 'pinned' | 'followActive';
 
 export interface ProjectionPairOptions {
+    readonly sourceLanguage: string;
     readonly targetLanguage: string;
     readonly contextLines: number;
     readonly mode: ProjectionPairMode;
@@ -41,7 +42,7 @@ export class VscodeProjectionPair implements vscode.Disposable {
         this.mode = options.mode;
         this.targetUri = createProjectionUri(sourceUri, targetLanguage);
         this.session = new ProjectionSession({
-            sourceLanguage: 'unknown',
+            sourceLanguage: options.sourceLanguage,
             targetLanguage,
             contextLines: options.contextLines,
             policy: { id: 'default', choices: {} },
