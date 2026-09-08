@@ -6,8 +6,9 @@ import {
 
 /**
  * Temporary provider used only to exercise the projection runtime before a real LM/local
- * translation provider is selected. It deliberately makes no semantic claim: the bounded source
- * fragment is echoed unchanged and marked uncertain.
+ * translation provider is selected. It deliberately makes no semantic claim: only the exact
+ * requested focus is echoed unchanged and marked uncertain. Surrounding provider context is
+ * advisory and never becomes target ownership.
  */
 export class ScaffoldProjectionProvider implements ProjectionProvider {
     readonly id = 'scaffold-passthrough';
@@ -23,9 +24,9 @@ export class ScaffoldProjectionProvider implements ProjectionProvider {
 
         return {
             revision: request.revision,
-            text: request.sourceRegion,
+            text: request.focusRegion,
             uncertainty: [
-                'Scaffold provider only: source fragment is echoed without semantic translation.',
+                'Scaffold provider only: focus fragment is echoed without semantic translation.',
             ],
         };
     }
