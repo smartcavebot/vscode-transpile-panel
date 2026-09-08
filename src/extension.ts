@@ -78,7 +78,7 @@ export function activate(context: vscode.ExtensionContext): void {
             const mode = config.get<ProjectionPairMode>('pairingMode', 'pinned');
             const contextLines = Math.max(0, config.get<number>('contextLines', 12));
             const maxContextCharacters = Math.max(
-                1,
+                2,
                 config.get<number>('maxContextCharacters', 12000),
             );
             const coverageChunkLines = Math.max(
@@ -86,7 +86,7 @@ export function activate(context: vscode.ExtensionContext): void {
                 config.get<number>('coverageChunkLines', 80),
             );
             const coverageChunkCharacters = Math.max(
-                1,
+                2,
                 config.get<number>('coverageChunkCharacters', 6000),
             );
 
