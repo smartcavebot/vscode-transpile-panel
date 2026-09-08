@@ -1,77 +1,58 @@
-# VS Code Translate Panel
+# VS Code Transpile Panel
 
-Real-time translation preview panel for any text-based file in VS Code.
+A native side-by-side VS Code projection surface for incrementally mapping source code into another programming language.
 
-![Screenshot](https://raw.githubusercontent.com/iyulab/vscode-translate-panel/main/images/Screenshot_1.jpg)
+The current repository contains the projection runtime and editor integration. **Semantic transpilation is not implemented yet**: the active `ScaffoldProjectionProvider` deliberately echoes each exact source focus unchanged and marks the result uncertain. Its purpose is to exercise source ownership, bounded provider context, cancellation, rebasing, and target-buffer invariants before a real C#→Python provider is introduced.
 
-![Version](https://img.shields.io/visual-studio-marketplace/v/iyulab.vscode-translate-panel)
-![License](https://img.shields.io/github/license/iyulab/vscode-translate-panel)
+## Current behavior
 
-## Features
+- Opens a readonly native VS Code virtual document beside the source editor.
+- Supports pinned and follow-active source/target pairing.
+- Invalidates and rebases target ownership immediately when the source changes.
+- Runs provider refresh manually or after a configurable debounce.
+- Separates provider **context** from exact source **focus** whose returned text may own target output.
+- Completes initial coverage through sequential line- and character-bounded focus requests; minified one-line files cannot silently become whole-file provider requests.
+- Cancels stale work and rejects stale provider results.
+- Keeps the projection core host-neutral; VS Code types remain in the adapter layer.
 
-- **Side-by-Side Preview**: Open a dedicated panel to view translated content alongside your original file
-- **Smart Translation**:
-  - Code files (`.cs`, `.java`, `.ts`, `.py`, etc.): Only comments are translated, code stays intact
-  - Markdown: Code blocks and inline code preserved, text translated
-  - Plain text: Full translation
-- **Real-time Sync**: Updates automatically on save or as you type
-- **Free Translation Engines**: Google Translate (unofficial) and Gemini API support
-- **20+ Languages Supported**: C#, Java, JavaScript, TypeScript, Python, Go, Rust, and more
+## Commands
 
-## Usage
-
-1. Open any file
-2. Click the **A文** icon in the editor title bar (top-right)
-3. Or use Command Palette: `Ctrl+Shift+P` → `Translate Panel: Open Preview`
+- `Transpile Panel: Open Projection`
+- `Transpile Panel: Refresh Projection`
 
 ## Configuration
 
-| Setting | Default | Description |
-|---------|---------|-------------|
-| `translatePanel.targetLanguage` | System language | Target language code (`ko`, `en`, `ja`, `zh`, `es`, etc.) |
-| `translatePanel.translationEngine` | `google` | Translation engine: `google` or `gemini` |
-| `translatePanel.updateMode` | `onSave` | Update trigger: `onSave` or `onType` |
-| `translatePanel.geminiApiKey` | - | API key for Gemini engine (optional) |
-| `translatePanel.debounceDelay` | `500` | Delay in ms for `onType` mode |
+| Setting | Default | Purpose |
+| --- | ---: | --- |
+| `transpilePanel.targetLanguage` | `python` | VS Code language id for the target document. |
+| `transpilePanel.pairingMode` | `pinned` | Keep the current source or follow the active editor. |
+| `transpilePanel.refreshMode` | `debounced` | Manual or debounced provider refresh after edits. |
+| `transpilePanel.debounceMs` | `750` | Debounce delay in milliseconds. |
+| `transpilePanel.contextLines` | `12` | Surrounding line radius available as provider context. |
+| `transpilePanel.maxContextCharacters` | `12000` | Hard provider-context character cap. |
+| `transpilePanel.coverageChunkLines` | `80` | Maximum lines owned by one initial-coverage focus. |
+| `transpilePanel.coverageChunkCharacters` | `6000` | Hard character cap for one initial-coverage focus. |
 
-## Supported Languages
+## Development
 
-### Code Files (Comments Only)
-C#, Java, JavaScript, TypeScript, Python, Go, Rust, Swift, Kotlin, C/C++, Ruby, PHP, Lua, SQL, Shell, PowerShell, and more.
-
-### Content Files (Smart Protection)
-- **Markdown**: Translates text, preserves code blocks, inline code, URLs
-- **JSON**: Translates string values, preserves keys and structure
-- **HTML**: Translates text content, preserves tags, scripts, styles
-
-## Examples
-
-### C# File
-```csharp
-public class Example
-{
-    // This comment will be translated → 이 주석은 번역됩니다
-    public void Method() { }
-}
+```sh
+npm ci
+npm run check-types
+npm run check:host-neutral
+npm run test:core
+npm run compile
 ```
 
-### Markdown File
-```markdown
-# Title → 제목
-This text is translated. → 이 텍스트는 번역됩니다.
-`code stays as is` → `code stays as is`
-```
+The CI gate runs dependency installation, strict TypeScript checking, the host-neutrality guard, and the headless core smoke suite.
 
-## Requirements
+## Architecture
 
-- VS Code 1.85.0 or higher
-- Internet connection for translation API
-- Gemini API key (recommended)
+The central rule is that provider context is not target ownership. `sourceRegion`/`sourceRange` are bounded advisory context; `focusRegion`/`focusRange` are the exact source span whose provider result may own target text. This distinction prevents overlapping context windows from absorbing unrelated target segments.
 
-## Disclaimer
+See `docs/architecture/host-boundary.md` and `docs/architecture/host-coupling-debt.md` for the current host-boundary design.
 
-This extension uses unofficial Google Translate API for the default engine. We recommend using the Gemini API with your own key for better reliability.
+## Provenance and license
 
-## License
+This repository began as a derivative of `iyulab/vscode-translate-panel` and retains upstream MIT attribution. The old natural-language translation webview, comment parsers, Google/Gemini providers, and related runtime dependencies have been removed from the active codebase.
 
-MIT License - see [LICENSE](LICENSE) for details.
+See `LICENSE` and `THIRD_PARTY_NOTICES.md`.
