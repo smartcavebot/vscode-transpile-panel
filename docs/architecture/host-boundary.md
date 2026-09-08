@@ -47,7 +47,30 @@ The reusable product is the projection core. Host integrations adapt editor/runt
 - provider/cancellation contracts
 - a bounded, revision-safe projection session
 
+`src/adapters/vscode/` is the first concrete host adapter. The current boundary crossings are explicit conversions rather than shared host-native types:
+
+| VS Code side | Boundary function | Core side |
+| --- | --- | --- |
+| `vscode.Position` | `toCorePosition` | `TextPosition` |
+| `vscode.Range` | `toCoreRange` | `TextRange` |
+| `vscode.TextDocument` | `toCoreDocument` | `DocumentSnapshot` |
+| `vscode.TextDocumentContentChangeEvent` | `toCoreChange` | `TextChange` |
+| `vscode.TextDocumentChangeEvent` | `toCoreChanges` | `readonly TextChange[]` |
+| `TextPosition` | `toVscodePosition` | `vscode.Position` |
+| `TextRange` | `toVscodeRange` | `vscode.Range` |
+
+The direction of dependency is deliberate: the VS Code adapter imports the core; the core never imports the adapter or VS Code.
+
 The legacy fork remains in place while behavior is migrated incrementally. This avoids a big-bang rewrite and lets each extraction be validated against the existing extension.
+
+## Executable portability checks
+
+The repository enforces the seam rather than relying on convention alone:
+
+- `npm run check:host-neutral` fails if `src/core/**` imports `vscode`.
+- `npm run test:core` compiles only `src/core/**` and exercises it from plain Node, without the VS Code runtime.
+- the headless smoke test verifies bounded context selection and latest-wins stale-result rejection.
+- CI runs strict TypeScript checking, the host-neutrality guard, and the headless core test on every pull request.
 
 ## Migration direction
 
