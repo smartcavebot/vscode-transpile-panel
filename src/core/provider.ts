@@ -11,7 +11,8 @@ export interface ProjectionRequest {
     readonly revision: number;
     readonly sourceRegion: string;
     readonly sourceRange: TextRange;
-    readonly previousSource?: string;
+    readonly previousSourceRegion?: string;
+    readonly previousSourceRange?: TextRange;
     readonly previousProjection?: string;
     readonly policy: SemanticPolicyProfile;
     readonly harness: HarnessProfile;
