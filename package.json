@@ -1,18 +1,18 @@
 {
-  "name": "vscode-translate-panel",
-  "displayName": "Translate Panel",
-  "description": "Real-time translation preview panel for any text-based file",
-  "version": "1.1.0",
-  "publisher": "iyulab",
+  "name": "vscode-transpile-panel",
+  "displayName": "Transpile Panel",
+  "description": "Live, source-anchored cross-language code projection beside the active VS Code editor",
+  "version": "1.2.0",
+  "publisher": "smartcavebot",
   "license": "MIT",
   "icon": "resources/icon.png",
   "repository": {
     "type": "git",
-    "url": "https://github.com/iyulab/vscode-translate-panel"
+    "url": "https://github.com/smartcavebot/vscode-transpile-panel"
   },
-  "homepage": "https://github.com/iyulab/vscode-translate-panel#readme",
+  "homepage": "https://github.com/smartcavebot/vscode-transpile-panel#readme",
   "bugs": {
-    "url": "https://github.com/iyulab/vscode-translate-panel/issues"
+    "url": "https://github.com/smartcavebot/vscode-transpile-panel/issues"
   },
   "engines": {
     "vscode": "^1.85.0"
@@ -22,74 +22,80 @@
     "Programming Languages"
   ],
   "keywords": [
-    "translate",
+    "transpile",
     "translation",
-    "preview",
-    "i18n",
-    "localization",
-    "google translate",
-    "gemini",
-    "comments"
+    "projection",
+    "code",
+    "side-by-side"
   ],
   "activationEvents": [
-    "onCommand:translatePanel.openPreview"
+    "onCommand:transpilePanel.open",
+    "onCommand:transpilePanel.refresh"
   ],
   "main": "./out/extension.js",
   "contributes": {
     "commands": [
       {
-        "command": "translatePanel.openPreview",
-        "title": "Translate Panel: Open Preview",
+        "command": "transpilePanel.open",
+        "title": "Transpile Panel: Open Projection",
         "icon": {
           "light": "resources/icons/translate-light.svg",
           "dark": "resources/icons/translate-dark.svg"
         }
+      },
+      {
+        "command": "transpilePanel.refresh",
+        "title": "Transpile Panel: Refresh Projection"
       }
     ],
     "menus": {
       "editor/title": [
         {
-          "command": "translatePanel.openPreview",
+          "command": "transpilePanel.open",
           "when": "editorTextFocus",
           "group": "navigation"
         }
       ]
     },
     "configuration": {
-      "title": "Translate Panel",
+      "title": "Transpile Panel",
       "properties": {
-        "translatePanel.targetLanguage": {
+        "transpilePanel.targetLanguage": {
           "type": "string",
-          "default": "",
-          "description": "Target language code (e.g., ko, en, ja, es, zh). Leave empty to use system language."
+          "default": "python",
+          "description": "VS Code language identifier for the target projection (for example python, typescript, rust)."
         },
-        "translatePanel.translationEngine": {
-          "type": "string",
-          "enum": [
-            "google",
-            "gemini"
-          ],
-          "default": "google",
-          "description": "Translation engine to use"
-        },
-        "translatePanel.updateMode": {
+        "transpilePanel.pairingMode": {
           "type": "string",
           "enum": [
-            "onType",
-            "onSave"
+            "pinned",
+            "followActive"
           ],
-          "default": "onSave",
-          "description": "When to update translation"
+          "default": "pinned",
+          "description": "Keep the projection paired to its source editor, or follow later active source editors."
         },
-        "translatePanel.geminiApiKey": {
+        "transpilePanel.refreshMode": {
           "type": "string",
-          "default": "",
-          "description": "Gemini API key (required for Gemini engine)"
+          "enum": [
+            "manual",
+            "debounced"
+          ],
+          "default": "debounced",
+          "description": "When provider work is started after edits. Source invalidation/rebasing always happens immediately."
         },
-        "translatePanel.debounceDelay": {
+        "transpilePanel.debounceMs": {
           "type": "number",
-          "default": 500,
-          "description": "Debounce delay in milliseconds for onType mode"
+          "default": 750,
+          "minimum": 100,
+          "maximum": 10000,
+          "description": "Quiet period before a debounced projection refresh."
+        },
+        "transpilePanel.contextLines": {
+          "type": "number",
+          "default": 12,
+          "minimum": 0,
+          "maximum": 200,
+          "description": "Context lines included around the dirty source region sent to a projection provider."
         }
       }
     }
