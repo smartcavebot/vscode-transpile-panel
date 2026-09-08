@@ -9,8 +9,15 @@ export interface ProjectionRequest {
     readonly targetLanguage: string;
     readonly sourceUri: string;
     readonly revision: number;
+
+    /** Bounded surrounding context supplied to the provider. */
     readonly sourceRegion: string;
     readonly sourceRange: TextRange;
+
+    /** Exact source-owned focus whose target text the provider must return. */
+    readonly focusRegion: string;
+    readonly focusRange: TextRange;
+
     readonly previousSourceRegion?: string;
     readonly previousSourceRange?: TextRange;
     readonly previousProjection?: string;

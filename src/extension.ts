@@ -77,6 +77,18 @@ export function activate(context: vscode.ExtensionContext): void {
             const targetLanguage = config.get<string>('targetLanguage', 'python').trim() || 'python';
             const mode = config.get<ProjectionPairMode>('pairingMode', 'pinned');
             const contextLines = Math.max(0, config.get<number>('contextLines', 12));
+            const maxContextCharacters = Math.max(
+                2,
+                config.get<number>('maxContextCharacters', 12000),
+            );
+            const coverageChunkLines = Math.max(
+                1,
+                config.get<number>('coverageChunkLines', 80),
+            );
+            const coverageChunkCharacters = Math.max(
+                2,
+                config.get<number>('coverageChunkCharacters', 6000),
+            );
 
             disposePair();
             const pair = new VscodeProjectionPair(
@@ -88,6 +100,9 @@ export function activate(context: vscode.ExtensionContext): void {
                     sourceLanguage: editor.document.languageId,
                     targetLanguage,
                     contextLines,
+                    maxContextCharacters,
+                    coverageChunkLines,
+                    coverageChunkCharacters,
                     mode,
                 },
             );

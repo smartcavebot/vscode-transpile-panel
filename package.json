@@ -95,7 +95,28 @@
           "default": 12,
           "minimum": 0,
           "maximum": 200,
-          "description": "Context lines included around the dirty source region sent to a projection provider."
+          "description": "Maximum surrounding source lines considered when building provider context around the exact projection focus."
+        },
+        "transpilePanel.maxContextCharacters": {
+          "type": "number",
+          "default": 12000,
+          "minimum": 2,
+          "maximum": 1000000,
+          "description": "Hard character cap for source context sent to a projection provider. The exact focus must fit within this bound; the two-character minimum preserves CRLF as an atomic text boundary."
+        },
+        "transpilePanel.coverageChunkLines": {
+          "type": "number",
+          "default": 80,
+          "minimum": 1,
+          "maximum": 1000,
+          "description": "Maximum source lines owned by one bounded coverage-fill request."
+        },
+        "transpilePanel.coverageChunkCharacters": {
+          "type": "number",
+          "default": 6000,
+          "minimum": 2,
+          "maximum": 1000000,
+          "description": "Hard character cap for one coverage focus, including minified or single-line source files. The two-character minimum preserves CRLF as an atomic text boundary."
         }
       }
     }
