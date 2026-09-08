@@ -11,6 +11,7 @@ const {
 async function main() {
     testBoundedSlice();
     testOffsetRebasingHelpers();
+    testSameStartChangesAreOrderIndependent();
     await testBoundedPriorContext();
     await testDeferredEditsRebaseAcrossRevisions();
     await testMultipleChangesInOneRevision();
@@ -49,6 +50,20 @@ function testOffsetRebasingHelpers() {
         change(5, 3, 'ONE!'),
     ];
     assert.deepEqual(changedOffsetsAfterEdits(unordered), { start: 5, end: 21 });
+}
+
+function testSameStartChangesAreOrderIndependent() {
+    const replacement = change(5, 3, 'XYZ');
+    const insertion = change(5, 0, '!');
+
+    assert.deepEqual(
+        changedOffsetsAfterEdits([replacement, insertion]),
+        { start: 5, end: 9 },
+    );
+    assert.deepEqual(
+        changedOffsetsAfterEdits([insertion, replacement]),
+        { start: 5, end: 9 },
+    );
 }
 
 async function testBoundedPriorContext() {
