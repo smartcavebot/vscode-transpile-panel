@@ -1,6 +1,6 @@
 import { DocumentSnapshot, TextChange } from './model';
-import { ProjectionProvider, ProjectionResult } from './provider';
-import { ProjectionSession } from './session';
+import { ProjectionProvider } from './provider';
+import { ProjectionCommit, ProjectionSession } from './session';
 
 export type ProjectionRefreshMode = 'manual' | 'debounced' | 'semantic';
 
@@ -13,7 +13,7 @@ export interface ProjectionRefreshSchedulerOptions {
     readonly mode: ProjectionRefreshMode;
     readonly debounceMs: number;
     readonly clock?: SchedulerClock;
-    readonly onResult?: (result: ProjectionResult) => void;
+    readonly onResult?: (result: ProjectionCommit) => void;
     readonly onError?: (error: unknown) => void;
 }
 
@@ -53,7 +53,7 @@ export class ProjectionRefreshScheduler {
         this.onError = options.onError;
     }
 
-    private readonly onResult?: (result: ProjectionResult) => void;
+    private readonly onResult?: (result: ProjectionCommit) => void;
     private readonly onError?: (error: unknown) => void;
 
     get currentMode(): ProjectionRefreshMode {
@@ -85,7 +85,7 @@ export class ProjectionRefreshScheduler {
         }
     }
 
-    async refreshNow(document?: DocumentSnapshot): Promise<ProjectionResult | undefined> {
+    async refreshNow(document?: DocumentSnapshot): Promise<ProjectionCommit | undefined> {
         this.assertActive();
         if (document) {
             this.latestDocument = document;
@@ -104,7 +104,7 @@ export class ProjectionRefreshScheduler {
         return result;
     }
 
-    async onSemanticEvent(document?: DocumentSnapshot): Promise<ProjectionResult | undefined> {
+    async onSemanticEvent(document?: DocumentSnapshot): Promise<ProjectionCommit | undefined> {
         this.assertActive();
         if (document) {
             this.latestDocument = document;
