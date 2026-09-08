@@ -1,0 +1,40 @@
+import { HarnessProfile, SemanticPolicyProfile, TextRange } from './model';
+
+export interface CancellationSignal {
+    readonly aborted: boolean;
+}
+
+export interface ProjectionRequest {
+    readonly sourceLanguage: string;
+    readonly targetLanguage: string;
+    readonly sourceUri: string;
+    readonly revision: number;
+    readonly sourceRegion: string;
+    readonly sourceRange: TextRange;
+    readonly previousSourceRegion?: string;
+    readonly previousSourceRange?: TextRange;
+    readonly previousProjection?: string;
+    readonly policy: SemanticPolicyProfile;
+    readonly harness: HarnessProfile;
+    readonly signal: CancellationSignal;
+}
+
+export interface ProjectionResult {
+    readonly revision: number;
+    readonly text: string;
+    readonly uncertainty?: readonly string[];
+}
+
+export interface ProjectionProvider {
+    readonly id: string;
+    project(request: ProjectionRequest): Promise<ProjectionResult>;
+}
+
+export class CoreCancellationController {
+    private readonly state = { aborted: false };
+    readonly signal: CancellationSignal = this.state;
+
+    cancel(): void {
+        this.state.aborted = true;
+    }
+}
