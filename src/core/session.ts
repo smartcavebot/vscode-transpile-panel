@@ -12,7 +12,8 @@ export interface ProjectionSessionOptions {
 export class ProjectionSession {
     private revision = 0;
     private dirtyRange?: TextRange;
-    private previousSource?: string;
+    private previousSourceRegion?: string;
+    private previousSourceRange?: TextRange;
     private previousProjection?: string;
     private cancellation?: CoreCancellationController;
 
@@ -49,7 +50,8 @@ export class ProjectionSession {
             revision: capturedRevision,
             sourceRegion: slice.text,
             sourceRange: slice.range,
-            previousSource: this.previousSource,
+            previousSourceRegion: this.previousSourceRegion,
+            previousSourceRange: this.previousSourceRange,
             previousProjection: this.previousProjection,
             policy: this.options.policy,
             harness: this.options.harness,
@@ -64,7 +66,8 @@ export class ProjectionSession {
             return undefined;
         }
 
-        this.previousSource = document.text;
+        this.previousSourceRegion = slice.text;
+        this.previousSourceRange = slice.range;
         this.previousProjection = result.text;
         this.dirtyRange = undefined;
         return result;
