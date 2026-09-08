@@ -69,21 +69,24 @@ export class VscodeProjectionPair implements vscode.Disposable {
         return this.refresh(document);
     }
 
-    async onDidChange(event: vscode.TextDocumentChangeEvent): Promise<ProjectionCommit | undefined> {
+    /**
+     * Apply a source mutation immediately without starting provider work.
+     *
+     * This is the latest-wins boundary: prior work is cancelled by session.invalidate(), target
+     * ownership is rebased synchronously, and deterministic deletions are visible before a later
+     * debounced/manual refresh runs.
+     */
+    applySourceChange(event: vscode.TextDocumentChangeEvent): boolean {
         this.assertActive();
         if (!this.matches(event.document)) {
-            return undefined;
+            return false;
         }
 
         const changes = toCoreChanges(event);
         const revision = this.session.invalidate(changes);
         this.buffer.rebase(changes, revision);
-
-        // Publish deterministic rebase effects immediately (for example, deleting target text
-        // whose entire source ownership disappeared) before waiting for the next projection.
         this.documents.update(this.targetUri, this.buffer.text);
-
-        return this.refresh(event.document);
+        return true;
     }
 
     async refresh(document: vscode.TextDocument): Promise<ProjectionCommit | undefined> {
