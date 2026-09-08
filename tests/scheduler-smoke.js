@@ -41,6 +41,7 @@ async function testManualMode() {
     assert.ok(result);
     assert.equal(requests.length, 1);
     assert.equal(requests[0].sourceRegion, 'value = 1');
+    assert.equal(requests[0].focusRegion, '1');
     assert.equal(results.length, 1);
 }
 
@@ -78,6 +79,7 @@ async function testDebouncedModeUsesLatestSnapshot() {
 
     assert.equal(requests.length, 1);
     assert.equal(requests[0].sourceRegion, 'value = 2');
+    assert.equal(requests[0].focusRegion, '2');
     assert.equal(requests[0].revision, session.currentRevision);
     assert.equal(scheduler.hasPendingRefresh, false);
 }
@@ -167,9 +169,13 @@ async function testDisposeCancelsInFlightProjection() {
         onResult: (result) => results.push(result),
     });
 
-    scheduler.onDocumentChanged(document(0, 'value = 0'), []);
+    const base = 'value = 0';
+    const edit = change(base.indexOf('0'), 1, '1');
+    const next = applyChanges(base, [edit]);
+    scheduler.onDocumentChanged(document(1, next), [edit]);
     const pending = scheduler.refreshNow();
 
+    assert.ok(signal, 'a real dirty focus must start provider work');
     assert.equal(signal.aborted, false);
     scheduler.dispose();
     assert.equal(signal.aborted, true);
@@ -226,7 +232,7 @@ function captureProvider(requests) {
             requests.push(request);
             return Promise.resolve({
                 revision: request.revision,
-                text: `projection:${request.sourceRegion}`,
+                text: `projection:${request.focusRegion}`,
             });
         },
     };
