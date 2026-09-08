@@ -129,12 +129,14 @@ export function activate(context: vscode.ExtensionContext): void {
             }
         }),
         vscode.window.onDidChangeActiveTextEditor((editor) => {
+            const pair = activePair;
             if (
                 !editor ||
                 editor.document.uri.scheme === PROJECTION_SCHEME ||
                 openingPair ||
-                activePair?.mode !== 'followActive' ||
-                activePair.matches(editor.document)
+                !pair ||
+                pair.mode !== 'followActive' ||
+                pair.matches(editor.document)
             ) {
                 return;
             }
