@@ -100,9 +100,9 @@
         "transpilePanel.maxContextCharacters": {
           "type": "number",
           "default": 12000,
-          "minimum": 1,
+          "minimum": 2,
           "maximum": 1000000,
-          "description": "Hard character cap for source context sent to a projection provider. The exact focus must fit within this bound."
+          "description": "Hard character cap for source context sent to a projection provider. The exact focus must fit within this bound; the two-character minimum preserves CRLF as an atomic text boundary."
         },
         "transpilePanel.coverageChunkLines": {
           "type": "number",
@@ -114,9 +114,9 @@
         "transpilePanel.coverageChunkCharacters": {
           "type": "number",
           "default": 6000,
-          "minimum": 1,
+          "minimum": 2,
           "maximum": 1000000,
-          "description": "Hard character cap for one coverage focus, including minified or single-line source files."
+          "description": "Hard character cap for one coverage focus, including minified or single-line source files. The two-character minimum preserves CRLF as an atomic text boundary."
         }
       }
     }
