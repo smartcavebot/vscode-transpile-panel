@@ -130,6 +130,7 @@ export class ProjectionRefreshScheduler {
             return;
         }
         this.clearPendingRefresh();
+        this.session.cancelActive();
         this.disposed = true;
     }
 
