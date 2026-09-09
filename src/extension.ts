@@ -5,13 +5,14 @@ import {
     ProjectionPairMode,
     VscodeProjectionPair,
 } from './adapters/vscode';
+import { LiteralBoundaryProjectionProvider } from './core/literalBoundary';
 import { ScaffoldProjectionProvider } from './providers/ScaffoldProjectionProvider';
 
 type RefreshMode = 'manual' | 'debounced';
 
 export function activate(context: vscode.ExtensionContext): void {
     const documents = new ProjectionDocumentProvider();
-    const provider = new ScaffoldProjectionProvider();
+    const provider = new LiteralBoundaryProjectionProvider(new ScaffoldProjectionProvider());
     let activePair: VscodeProjectionPair | undefined;
     let debounceTimer: NodeJS.Timeout | undefined;
     let openingPair = false;
