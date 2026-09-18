@@ -148,7 +148,7 @@ function stabilizeLiteralFocus(
         for (const literal of literals) {
             if (rangesOverlap(result, literal) && literal.kind === 'unsupported') {
                 throw new Error(
-                    'Unsupported C# raw string intersects the projection focus; refusing to expose or mistranslate its payload.',
+                    'Unsupported or unterminated C# literal intersects the projection focus; refusing to expose or mistranslate its payload.',
                 );
             }
             if (rangesOverlap(result, literal) && !rangeContains(result, literal)) {
@@ -496,12 +496,24 @@ function tryScanCSharpString(text: string, start: number): ScannedLiteral | unde
     }
 
     if (prefix.interpolated) {
-        return scanCSharpInterpolatedString(text, start, prefix);
+        return (
+            scanCSharpInterpolatedString(text, start, prefix) ?? {
+                start,
+                end: text.length,
+                kind: 'unsupported',
+                targetText: '',
+            }
+        );
     }
 
     const end = findCSharpStringEnd(text, prefix.contentStart, prefix.quote, prefix.verbatim);
     if (end < 0) {
-        return undefined;
+        return {
+            start,
+            end: text.length,
+            kind: 'unsupported',
+            targetText: '',
+        };
     }
     let finalEnd = end;
     let utf8 = false;
@@ -848,11 +860,21 @@ function tryScanPythonString(text: string, start: number): ScannedLiteral | unde
             };
         }
         if (!triple && text[cursor] === '\n') {
-            return undefined;
+            return {
+                start,
+                end: cursor,
+                kind: 'unsupported',
+                targetText: '',
+            };
         }
         cursor += 1;
     }
-    return undefined;
+    return {
+        start,
+        end: text.length,
+        kind: 'unsupported',
+        targetText: '',
+    };
 }
 
 function pythonStringLiteral(value: string): string {
