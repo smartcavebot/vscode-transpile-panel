@@ -17,6 +17,8 @@ export interface GroundedPatch {
 
 export type GroundedPatchFailureCode =
     | 'invalid-revision'
+    | 'invalid-patch'
+    | 'invalid-edit'
     | 'revision-mismatch'
     | 'empty-search'
     | 'missing-anchor'
@@ -39,6 +41,36 @@ export interface GroundedPatchApplyResult {
     readonly appliedEdits: number;
 }
 
+/** Validate a runtime value before treating provider output as a grounded patch. */
+export function validateGroundedPatch(value: unknown): asserts value is GroundedPatch {
+    if (!isRecord(value)) {
+        throw new GroundedPatchError('invalid-patch', 'Grounded patch must be an object.');
+    }
+
+    assertRevision(value.revision, 'patch revision');
+
+    if (!Array.isArray(value.edits)) {
+        throw new GroundedPatchError('invalid-patch', 'Grounded patch edits must be an array.');
+    }
+
+    value.edits.forEach((edit, editIndex) => {
+        if (!isRecord(edit) || typeof edit.search !== 'string' || typeof edit.replace !== 'string') {
+            throw new GroundedPatchError(
+                'invalid-edit',
+                `Grounded patch edit ${editIndex} must contain string SEARCH and REPLACE values.`,
+                editIndex,
+            );
+        }
+        if (edit.search.length === 0) {
+            throw new GroundedPatchError(
+                'empty-search',
+                `Grounded patch edit ${editIndex} has an empty SEARCH anchor.`,
+                editIndex,
+            );
+        }
+    });
+}
+
 /**
  * Apply a provider-produced patch only when every edit is grounded by a unique,
  * exact anchor in the current target text.
@@ -53,7 +85,7 @@ export function applyGroundedPatch(
     patch: GroundedPatch,
 ): GroundedPatchApplyResult {
     assertRevision(currentRevision, 'current revision');
-    assertRevision(patch.revision, 'patch revision');
+    validateGroundedPatch(patch);
 
     if (patch.revision !== currentRevision) {
         throw new GroundedPatchError(
@@ -64,14 +96,6 @@ export function applyGroundedPatch(
 
     let text = currentText;
     patch.edits.forEach((edit, editIndex) => {
-        if (edit.search.length === 0) {
-            throw new GroundedPatchError(
-                'empty-search',
-                `Grounded patch edit ${editIndex} has an empty SEARCH anchor.`,
-                editIndex,
-            );
-        }
-
         const first = text.indexOf(edit.search);
         if (first < 0) {
             throw new GroundedPatchError(
@@ -105,11 +129,15 @@ export function applyGroundedPatch(
     };
 }
 
-function assertRevision(value: number, label: string): void {
-    if (!Number.isInteger(value) || value < 0) {
+function assertRevision(value: unknown, label: string): asserts value is number {
+    if (typeof value !== 'number' || !Number.isInteger(value) || value < 0) {
         throw new GroundedPatchError(
             'invalid-revision',
-            `${label} must be a non-negative integer; received ${value}.`,
+            `${label} must be a non-negative integer; received ${String(value)}.`,
         );
     }
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+    return typeof value === 'object' && value !== null;
 }
