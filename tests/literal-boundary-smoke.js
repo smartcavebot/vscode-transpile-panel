@@ -11,6 +11,7 @@ const {
 async function main() {
     testOrdinaryLiteralLowering();
     testBytesAndInterpolation();
+    testInterpolationExpressionLiteralRedaction();
     testPlaceholderCollisionAvoidance();
     testLiteralFocusStabilization();
     testRawStringFocusFailsClosed();
@@ -56,6 +57,25 @@ function testBytesAndInterpolation() {
     assert.equal(
         interpolation.restore(providerShape),
         'var s = f"token=abc {user.Id} end";',
+    );
+}
+
+function testInterpolationExpressionLiteralRedaction() {
+    const source =
+        'var s = $"user={Lookup(\\\"api-secret\\\", true, 7)}";';
+    const boundary = protectCSharpLiterals(source);
+
+    assert(!boundary.protectedText.includes('api-secret'));
+    assert(!boundary.protectedText.includes('true'));
+    assert(!boundary.protectedText.includes('7'));
+    assert(boundary.protectedText.includes('Lookup('));
+
+    const restored = boundary.restore(boundary.protectedText);
+    assert(restored.includes('Lookup("api-secret", True, 7)'));
+
+    assert.throws(
+        () => protectCSharpLiterals('var s = $"x={Lookup(\\\"\\\"\\\"secret\\\"\\\"\\\")}";'),
+        /raw string appears inside an interpolation expression/,
     );
 }
 
