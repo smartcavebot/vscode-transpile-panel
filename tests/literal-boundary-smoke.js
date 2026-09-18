@@ -64,7 +64,7 @@ function testBytesAndInterpolation() {
 
 function testInterpolationExpressionLiteralRedaction() {
     const source =
-        'var s = $"user={Lookup(\\\"api-secret\\\", true, 7)}";';
+        'var s = $"user={Lookup("api-secret", true, 7)}";';
     const boundary = protectCSharpLiterals(source);
 
     assert(!boundary.protectedText.includes('api-secret'));
@@ -76,7 +76,7 @@ function testInterpolationExpressionLiteralRedaction() {
     assert(restored.includes('Lookup("api-secret", True, 7)'));
 
     assert.throws(
-        () => protectCSharpLiterals('var s = $"x={Lookup(\\\"\\\"\\\"secret\\\"\\\"\\\")}";'),
+        () => protectCSharpLiterals('var s = $"x={Lookup("""secret""")}";'),
         /raw string appears inside an interpolation expression/,
     );
 }
