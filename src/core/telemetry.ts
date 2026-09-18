@@ -57,9 +57,65 @@ export const NOOP_PROJECTION_TELEMETRY_SINK: ProjectionTelemetrySink = Object.fr
     },
 });
 
+/**
+ * Deliver a telemetry event after rebuilding it from the contract's explicit
+ * allow-list. This prevents JavaScript callers or structurally wider TypeScript
+ * objects from smuggling raw source/target payloads through extra properties.
+ */
 export async function recordProjectionTelemetry(
     sink: ProjectionTelemetrySink | undefined,
     event: ProjectionTelemetryEvent,
 ): Promise<void> {
-    await (sink ?? NOOP_PROJECTION_TELEMETRY_SINK).record(event);
+    await (sink ?? NOOP_PROJECTION_TELEMETRY_SINK).record(sanitizeTelemetryEvent(event));
+}
+
+function sanitizeTelemetryEvent(event: ProjectionTelemetryEvent): ProjectionTelemetryEvent {
+    const base = {
+        revision: event.revision,
+        sourceLanguage: event.sourceLanguage,
+        targetLanguage: event.targetLanguage,
+        policyId: event.policyId,
+        harnessId: event.harnessId,
+    };
+
+    switch (event.kind) {
+        case 'provider':
+            return {
+                ...base,
+                kind: 'provider',
+                phase: event.phase,
+                providerId: event.providerId,
+                sourceCharacters: event.sourceCharacters,
+                focusCharacters: event.focusCharacters,
+                previousProjectionCharacters: event.previousProjectionCharacters,
+                outputCharacters: event.outputCharacters,
+                durationMs: event.durationMs,
+            };
+        case 'patch':
+            return {
+                ...base,
+                kind: 'patch',
+                status: event.status,
+                editCount: event.editCount,
+                beforeCharacters: event.beforeCharacters,
+                afterCharacters: event.afterCharacters,
+                failureCode: event.failureCode,
+            };
+        case 'validation':
+            return {
+                ...base,
+                kind: 'validation',
+                validatorId: event.validatorId,
+                status: event.status,
+                issueCount: event.issueCount,
+                errorCount: event.errorCount,
+                durationMs: event.durationMs,
+            };
+        default:
+            return assertNever(event);
+    }
+}
+
+function assertNever(value: never): never {
+    throw new Error(`Unsupported projection telemetry event kind: ${String((value as { kind?: unknown }).kind)}.`);
 }
