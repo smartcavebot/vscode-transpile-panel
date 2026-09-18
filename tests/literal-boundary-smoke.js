@@ -15,7 +15,9 @@ async function main() {
     testPlaceholderCollisionAvoidance();
     testLiteralFocusStabilization();
     testRawStringFocusFailsClosed();
+    testUnterminatedCSharpStringsFailClosed();
     await testProviderRequestRedaction();
+    await testUnterminatedPriorProjectionFailsClosed();
     await testSessionWidensLiteralOwnership();
     await testPreparedContextMasksPartialMultilineLiteral();
     await testUnsupportedPairFailsClosed();
@@ -109,7 +111,42 @@ function testRawStringFocusFailsClosed() {
     const start = text.indexOf('secret');
     assert.throws(
         () => stabilizeCSharpLiteralFocus(text, { start, end: start + 2 }),
-        /raw string intersects the projection focus/,
+        /Unsupported or unterminated C# literal intersects the projection focus/,
+    );
+}
+
+function testUnterminatedCSharpStringsFailClosed() {
+    assert.throws(
+        () => protectCSharpLiterals('var token = "api-secret'),
+        /Unsupported literal intersects provider-owned source/,
+    );
+    assert.throws(
+        () => protectCSharpLiterals('var token = $"api-secret {user.Id}'),
+        /Unsupported literal intersects provider-owned source/,
+    );
+}
+
+async function testUnterminatedPriorProjectionFailsClosed() {
+    const provider = new LiteralBoundaryProjectionProvider(captureProvider([]));
+    await assert.rejects(
+        () =>
+            provider.project({
+                sourceLanguage: 'csharp',
+                targetLanguage: 'python',
+                sourceUri: 'file:///x.cs',
+                revision: 1,
+                sourceRegion: 'var x = 1;',
+                sourceRange: textRange(0, 0, 0, 10),
+                focusRegion: 'var x = 1;',
+                focusRange: textRange(0, 0, 0, 10),
+                previousSourceRegion: 'var y = 2;',
+                previousSourceRange: textRange(0, 0, 0, 10),
+                previousProjection: 'token = "api-secret',
+                policy: { id: 'default', choices: {} },
+                harness: { id: 'none', targetLanguage: 'python', facilities: [] },
+                signal: { aborted: false },
+            }),
+        /Unsupported literal intersects provider-owned source/,
     );
 }
 
