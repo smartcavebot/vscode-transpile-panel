@@ -622,6 +622,7 @@ function scanCSharpInterpolatedString(
             if (close < 0) {
                 return undefined;
             }
+            addCSharpInterpolationExpressionLiterals(text, index + 1, close, segments);
             index = close + 1;
             segmentStart = index;
             continue;
@@ -649,6 +650,41 @@ function addCSharpInterpolationSegment(
     const raw = text.slice(start, end);
     const decoded = decodeCSharpStringBody(raw, verbatim).replace(/\{\{/g, '{').replace(/\}\}/g, '}');
     segments.push({ start, end, targetText: escapePythonFStringSegment(decoded) });
+}
+
+function addCSharpInterpolationExpressionLiterals(
+    text: string,
+    start: number,
+    end: number,
+    segments: SegmentReplacement[],
+): void {
+    const expressionLiterals = scanCSharp(text.slice(start, end));
+    for (const literal of expressionLiterals) {
+        if (literal.kind === 'unsupported') {
+            throw new Error(
+                'Unsupported C# raw string appears inside an interpolation expression; refusing to expose or mistranslate its payload.',
+            );
+        }
+
+        if (literal.kind === 'interpolated' && literal.segmentReplacements) {
+            for (const nested of literal.segmentReplacements) {
+                segments.push({
+                    start: start + nested.start,
+                    end: start + nested.end,
+                    targetText: nested.targetText,
+                });
+            }
+            continue;
+        }
+
+        segments.push({
+            start: start + literal.start,
+            end: start + literal.end,
+            targetText: literal.targetText,
+        });
+    }
+
+    segments.sort((left, right) => left.start - right.start || left.end - right.end);
 }
 
 function findInterpolationExpressionEnd(text: string, start: number): number {
