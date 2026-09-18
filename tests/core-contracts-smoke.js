@@ -215,6 +215,8 @@ async function testContentFreeTelemetrySink() {
             previousProjectionCharacters: 10,
             outputCharacters: 14,
             durationMs: 25,
+            text: 'must-not-cross-boundary',
+            sourceRegion: 'must-not-cross-boundary',
         },
     );
 
