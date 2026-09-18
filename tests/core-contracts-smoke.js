@@ -10,6 +10,7 @@ const {
 async function main() {
     testGroundedPatchSequentialApplication();
     testGroundedPatchRejectsStaleAndAmbiguousAnchors();
+    testGroundedPatchRejectsMalformedRuntimeInput();
     await testValidationAggregationAndCancellation();
     await testContentFreeTelemetrySink();
     console.log('core contracts smoke: PASS');
@@ -80,6 +81,31 @@ function testGroundedPatchRejectsStaleAndAmbiguousAnchors() {
                 edits: [{ search: '', replace: 'y' }],
             }),
         (error) => error.code === 'empty-search',
+    );
+}
+
+function testGroundedPatchRejectsMalformedRuntimeInput() {
+    assert.throws(
+        () => applyGroundedPatch('x', 1, { revision: 1, edits: null }),
+        (error) => error.code === 'invalid-patch',
+    );
+
+    assert.throws(
+        () =>
+            applyGroundedPatch('x', 1, {
+                revision: 1,
+                edits: [{ search: 1, replace: 'y' }],
+            }),
+        (error) => error.code === 'invalid-edit' && error.editIndex === 0,
+    );
+
+    assert.throws(
+        () =>
+            applyGroundedPatch('x', 1, {
+                revision: 1,
+                edits: [{ search: 'x', replace: 2 }],
+            }),
+        (error) => error.code === 'invalid-edit' && error.editIndex === 0,
     );
 }
 
