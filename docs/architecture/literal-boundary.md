@@ -25,7 +25,7 @@ For C# → Python the boundary currently lowers, without provider participation:
 - ordinary and verbatim C# strings/chars → escaped Python strings;
 - C# UTF-8 string literals (`"…"u8`) → Python byte strings;
 - numeric `new byte[] { … }` initializers → `bytes([…])`;
-- ordinary/verbatim interpolated strings by redacting literal segments while leaving interpolation expressions visible to the provider.
+- ordinary/verbatim interpolated strings by redacting literal segments and any recognized literals nested inside interpolation expressions while leaving the expression structure/bindings visible to the provider.
 
 The session allows a provider boundary to stabilize source ownership before a request. The literal boundary uses that hook to widen a focus that intersects only part of a recognized literal, so an incremental edit inside a string cannot send a raw substring or create a target segment that owns only part of the literal.
 
@@ -36,6 +36,8 @@ The boundary scans the full source before context is sliced. Consequently, advis
 This is a literal boundary, not a general secret scanner. Identifier names, comments, and non-literal semantic data can still cross a provider boundary and need separate policy if they are considered sensitive.
 
 C# raw string literals are recognized for containment but are not yet semantically lowered. If one intersects provider-owned focus, the request fails closed. Raw strings that appear only in advisory context are masked.
+
+Unterminated C# strings/interpolated strings and unterminated prior Python string literals also fail closed rather than exposing partially typed payloads. This is intentionally conservative for live-editing safety.
 
 Prior Python f-strings are currently redacted as whole target literals rather than exposing their expression substructure. This is safe but gives a future semantic provider less incremental context than the C# interpolation path.
 
