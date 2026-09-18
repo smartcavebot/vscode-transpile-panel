@@ -88,9 +88,20 @@ export class ProjectionSession {
         document: DocumentSnapshot,
         provider: ProjectionProvider,
     ): Promise<ProjectionCommit | undefined> {
-        const focusOffsets = normalizeProjectionFocus(document.text, this.dirtyOffsets);
+        let focusOffsets = normalizeProjectionFocus(document.text, this.dirtyOffsets);
         if (!focusOffsets) {
             return undefined;
+        }
+        if (provider.stabilizeSourceFocus) {
+            focusOffsets = provider.stabilizeSourceFocus(
+                document.text,
+                focusOffsets,
+                this.options.sourceLanguage,
+                this.options.targetLanguage,
+            );
+            assertOffsetRangeWithinText(focusOffsets, document.text.length, false);
+            assertRepresentableOffset(document.text, focusOffsets.start);
+            assertRepresentableOffset(document.text, focusOffsets.end);
         }
 
         const capturedRevision = this.revision;

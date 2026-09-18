@@ -1,3 +1,4 @@
+import type { OffsetRange } from './changes';
 import { HarnessProfile, SemanticPolicyProfile, TextRange } from './model';
 
 export interface CancellationSignal {
@@ -34,6 +35,13 @@ export interface ProjectionResult {
 
 export interface ProjectionProvider {
     readonly id: string;
+    /** Optional provider-side boundary hook that may widen source ownership before slicing context. */
+    stabilizeSourceFocus?(
+        text: string,
+        focus: OffsetRange,
+        sourceLanguage: string,
+        targetLanguage: string,
+    ): OffsetRange;
     project(request: ProjectionRequest): Promise<ProjectionResult>;
 }
 
