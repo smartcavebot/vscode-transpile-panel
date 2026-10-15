@@ -202,7 +202,7 @@ export class VscodeProjectionPair implements vscode.Disposable {
         const sourceText = document.getText();
         const sourceLength = sourceText.length;
         if (sourceLength === 0) {
-            this.documents.update(this.targetUri, '');
+            this.publishTarget();
             return undefined;
         }
 
@@ -253,7 +253,7 @@ export class VscodeProjectionPair implements vscode.Disposable {
         if (commit.sourceOffsets.end > commit.sourceOffsets.start) {
             this.buffer.applyProjection(commit.sourceOffsets, commit.text, commit.revision);
         }
-        this.documents.update(this.targetUri, this.buffer.text);
+        this.publishTarget();
     }
 
     private publishTarget(): void {
