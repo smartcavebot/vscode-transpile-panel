@@ -1,0 +1,41 @@
+{
+  "version": 1,
+  "id": "generics-collections-001",
+  "sourceLanguage": "csharp",
+  "targetLanguage": "python",
+  "category": "generics-interfaces-typing",
+  "initialSource": "List<int> values = new() { 1, 2 };",
+  "initialTarget": "values: list[int] = [1, 2]",
+  "steps": [
+    {
+      "id": "edit-1",
+      "edits": [
+        {
+          "rangeOffset": 31,
+          "rangeLength": 0,
+          "text": ", 3"
+        }
+      ],
+      "expectedSource": "List<int> values = new() { 1, 2, 3 };",
+      "referenceTargets": [
+        "values: list[int] = [1, 2, 3]"
+      ],
+      "sourceIsSyntacticallyComplete": true
+    },
+    {
+      "id": "edit-2",
+      "edits": [
+        {
+          "rangeOffset": 5,
+          "rangeLength": 29,
+          "text": "string> values = new() { \"a\", \"b\""
+        }
+      ],
+      "expectedSource": "List<string> values = new() { \"a\", \"b\" };",
+      "referenceTargets": [
+        "values: list[str] = [\"a\", \"b\"]"
+      ],
+      "sourceIsSyntacticallyComplete": true
+    }
+  ]
+}
