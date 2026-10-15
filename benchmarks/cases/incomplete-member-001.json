@@ -1,0 +1,50 @@
+{
+  "version": 1,
+  "id": "incomplete-member-001",
+  "sourceLanguage": "csharp",
+  "targetLanguage": "python",
+  "category": "incomplete-editor-states",
+  "initialSource": "var item = data;",
+  "initialTarget": "item = data",
+  "steps": [
+    {
+      "id": "edit-1",
+      "edits": [
+        {
+          "rangeOffset": 15,
+          "rangeLength": 1,
+          "text": "."
+        }
+      ],
+      "expectedSource": "var item = data.",
+      "sourceIsSyntacticallyComplete": false
+    },
+    {
+      "id": "edit-2",
+      "edits": [
+        {
+          "rangeOffset": 16,
+          "rangeLength": 0,
+          "text": "Value;"
+        }
+      ],
+      "expectedSource": "var item = data.Value;",
+      "referenceTargets": [
+        "item = data.Value"
+      ],
+      "sourceIsSyntacticallyComplete": true
+    },
+    {
+      "id": "edit-3",
+      "edits": [
+        {
+          "rangeOffset": 16,
+          "rangeLength": 6,
+          "text": ""
+        }
+      ],
+      "expectedSource": "var item = data.",
+      "sourceIsSyntacticallyComplete": false
+    }
+  ]
+}
