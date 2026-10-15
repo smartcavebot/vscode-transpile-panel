@@ -32,6 +32,7 @@ const assert = (condition, message) => { if (!condition) throw new Error(message
 function options(argv) {
     const [command='plan', ...rest] = argv;
     const values = { command, phase: 'pilot' };
+    const seen = new Set();
     for (let i=0; i<rest.length; i++) {
         const name=rest[i], value=rest[++i];
         assert(name.startsWith('--') && typeof value==='string' && !value.startsWith('--'),
@@ -39,7 +40,8 @@ function options(argv) {
         const key=name.slice(2);
         assert(['phase','cell','protocol','case','bindings','output-root','max-requests'].includes(key),
             'Unknown matrix argument: '+name);
-        assert(!(key in values), 'Duplicate matrix argument: '+name);
+        assert(!seen.has(key), 'Duplicate matrix argument: '+name);
+        seen.add(key);
         values[key]=value;
     }
     assert(command==='plan' || command==='run', 'Command must be plan or run.');
