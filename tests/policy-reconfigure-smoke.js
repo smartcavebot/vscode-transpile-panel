@@ -3,7 +3,7 @@ const assert = require('node:assert/strict');
 const {
     ProjectionSession,
     TargetProjectionBuffer,
-    selectCoverageRequirement,
+    selectNextProjectionRequirement,
     stabilizeProjectionRequirement,
 } = require('../.core-test/core');
 
@@ -65,7 +65,9 @@ async function main() {
     // widens individual provider requests beyond the configured chunk size.
     while (buffer.freshCoverageGaps(source.length).length > 0) {
         const gap = buffer.freshCoverageGaps(source.length)[0];
-        const chunk = selectCoverageRequirement(source, gap, 1, 8);
+        const chunk = selectNextProjectionRequirement(
+            source, gap, buffer.segments, 1, 8,
+        );
         const required = stabilizeProjectionRequirement(
             source,
             chunk,
