@@ -1,0 +1,38 @@
+{
+  "version": 1,
+  "id": "disposal-context-001",
+  "sourceLanguage": "csharp",
+  "targetLanguage": "python",
+  "category": "disposal-context-management",
+  "initialSource": "using var file = File.OpenRead(path);",
+  "initialTarget": "with open(path, 'rb') as file:\n    pass",
+  "steps": [
+    {
+      "id": "edit-1",
+      "edits": [
+        {
+          "rangeOffset": 26,
+          "rangeLength": 4,
+          "text": "Write"
+        }
+      ],
+      "expectedSource": "using var file = File.OpenWrite(path);",
+      "referenceTargets": [
+        "with open(path, 'wb') as file:\n    pass"
+      ],
+      "sourceIsSyntacticallyComplete": true
+    },
+    {
+      "id": "edit-2",
+      "edits": [
+        {
+          "rangeOffset": 26,
+          "rangeLength": 5,
+          "text": ""
+        }
+      ],
+      "expectedSource": "using var file = File.Open(path);",
+      "sourceIsSyntacticallyComplete": true
+    }
+  ]
+}
