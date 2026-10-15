@@ -4,6 +4,10 @@ import {
     ProjectionProvider,
     ProjectionSession,
     TargetProjectionBuffer,
+    SemanticPolicyProfile,
+    HarnessProfile,
+    HarnessFacility,
+    resolveHarnessSections,
     selectCoverageRequirement,
     stabilizeProjectionRequirement,
 } from '../../core';
@@ -20,6 +24,9 @@ export interface ProjectionPairOptions {
     readonly coverageChunkLines: number;
     readonly coverageChunkCharacters: number;
     readonly mode: ProjectionPairMode;
+    readonly policy?: SemanticPolicyProfile;
+    readonly harness?: HarnessProfile;
+    readonly availableFacilities?: readonly HarnessFacility[];
 }
 
 /**
@@ -38,6 +45,7 @@ export class VscodeProjectionPair implements vscode.Disposable {
     private readonly coverageChunkCharacters: number;
     private initialized = false;
     private disposed = false;
+    private availableFacilities: readonly HarnessFacility[] = [];
 
     constructor(
         readonly sourceUri: vscode.Uri,
@@ -47,6 +55,7 @@ export class VscodeProjectionPair implements vscode.Disposable {
         options: ProjectionPairOptions,
     ) {
         this.mode = options.mode;
+        this.availableFacilities = options.availableFacilities ?? [];
         this.coverageChunkLines = positiveInteger(
             options.coverageChunkLines,
             'coverage chunk lines',
@@ -64,8 +73,8 @@ export class VscodeProjectionPair implements vscode.Disposable {
                 options.maxContextCharacters,
                 'maximum context characters',
             ),
-            policy: { id: 'default', choices: {} },
-            harness: { id: 'none', targetLanguage, facilities: [] },
+            policy: options.policy ?? { id: 'default', choices: {} },
+            harness: options.harness ?? { id: 'none', targetLanguage, facilities: [] },
         });
     }
 
@@ -104,7 +113,7 @@ export class VscodeProjectionPair implements vscode.Disposable {
         const changes = toCoreChanges(event);
         const revision = this.session.invalidate(changes);
         this.buffer.rebase(changes, revision);
-        this.documents.update(this.targetUri, this.buffer.text);
+        this.publishTarget();
         return true;
     }
 
@@ -123,6 +132,22 @@ export class VscodeProjectionPair implements vscode.Disposable {
         }
 
         return (await this.fillCoverage(document)) ?? accepted;
+    }
+
+    updateProfiles(
+        policy: SemanticPolicyProfile,
+        harness: HarnessProfile,
+        availableFacilities: readonly HarnessFacility[] = this.availableFacilities,
+    ): boolean {
+        this.assertActive();
+        // Resolve before mutation; invalid profiles must leave the session unchanged.
+        resolveHarnessSections(harness, availableFacilities);
+        const revision = this.session.reconfigure(policy, harness);
+        this.availableFacilities = availableFacilities;
+        if (revision === undefined) return false;
+        this.buffer.invalidateAll(revision);
+        this.publishTarget();
+        return true;
     }
 
     get targetText(): string {
@@ -183,7 +208,7 @@ export class VscodeProjectionPair implements vscode.Disposable {
 
         let lastAccepted: ProjectionCommit | undefined;
         while (true) {
-            const gaps = this.buffer.coverageGaps(sourceLength);
+            const gaps = this.buffer.freshCoverageGaps(sourceLength);
             const gap = gaps[0];
             if (!gap) {
                 return lastAccepted;
@@ -213,7 +238,7 @@ export class VscodeProjectionPair implements vscode.Disposable {
             this.applyCommit(commit);
             lastAccepted = commit;
 
-            const nextGap = this.buffer.coverageGaps(sourceLength)[0];
+            const nextGap = this.buffer.freshCoverageGaps(sourceLength)[0];
             if (
                 nextGap &&
                 nextGap.start === gap.start &&
@@ -229,6 +254,23 @@ export class VscodeProjectionPair implements vscode.Disposable {
             this.buffer.applyProjection(commit.sourceOffsets, commit.text, commit.revision);
         }
         this.documents.update(this.targetUri, this.buffer.text);
+    }
+
+    private publishTarget(): void {
+        const sections = resolveHarnessSections(this.session.currentHarness, this.availableFacilities);
+        if (sections.length === 0) {
+            this.documents.update(this.targetUri, this.buffer.text);
+            return;
+        }
+        // The first proving pair is C# → Python. Labels are valid Python comments
+        // and visibly distinguish harness ownership from translated source text.
+        if (this.targetLanguage !== 'python') {
+            throw new Error('Harness display requires a target-language renderer.');
+        }
+        const header = sections
+            .map((section) => `# [harness facility: ${section.facilityId}]\n${section.text}`)
+            .join('\n');
+        this.documents.update(this.targetUri, `${header}\n# [translated source]\n${this.buffer.text}`);
     }
 
     private assertActive(): void {
