@@ -1,0 +1,14 @@
+{
+  "$comment": "Copy to model-bindings.local.json (gitignored). Replace placeholders with actual loaded model aliases and verified quantization/backend. Do not commit credentials.",
+  "endpoint": "http://127.0.0.1:11434/v1/chat/completions",
+  "deviceLabel": "OPTIONAL_LOCAL_DEVICE_DESCRIPTION",
+  "models": {
+    "qwen25coder-1_5b-q4": {
+      "modelId": "REPLACE_WITH_ACTUALLY_LOADED_ALIAS",
+      "quantization": "Q4",
+      "engine": "REPLACE_WITH_ENGINE",
+      "runtimeVersion": "REPLACE_WITH_VERSION",
+      "artifactSha256": null
+    }
+  }
+}
