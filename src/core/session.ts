@@ -375,6 +375,42 @@ export function stabilizeProjectionRequirement(
 }
 
 /**
+ * Prefer a complete stale source-owned segment to avoid cutting target text without
+ * correspondence. Otherwise fill the uncovered gap up to the next ownership boundary.
+ * Never exceed the provider's hard focus limit silently.
+ */
+export function selectNextProjectionRequirement(
+    text: string,
+    gap: OffsetRange,
+    segments: readonly { readonly source: OffsetRange; readonly stale: boolean }[],
+    maxLines: number,
+    maxCharacters: number,
+): OffsetRange {
+    const stale = segments.find((segment) =>
+        segment.stale && segment.source.start === gap.start,
+    );
+    if (stale) {
+        assertOffsetRangeWithinText(stale.source, text.length, false);
+        const length = stale.source.end - stale.source.start;
+        if (length > maxCharacters) {
+            throw new RangeError('Stale source segment exceeds bounded coverage character cap.');
+        }
+        const newlineCount = text.slice(stale.source.start, stale.source.end).split('\n').length - 1;
+        if (newlineCount >= maxLines && text[stale.source.end - 1] !== '\n') {
+            throw new RangeError('Stale source segment exceeds bounded coverage line cap.');
+        }
+        return { ...stale.source };
+    }
+
+    const nextStart = segments
+        .map((segment) => segment.source.start)
+        .filter((start) => start > gap.start)
+        .reduce((minimum, start) => Math.min(minimum, start), gap.end);
+    const restricted = { start: gap.start, end: Math.min(gap.end, nextStart) };
+    return selectCoverageRequirement(text, restricted, maxLines, maxCharacters);
+}
+
+/**
  * Select the next bounded focus from a coverage gap. Both line count and character count are hard
  * upper bounds, so a minified/one-line source cannot silently become a whole-file request.
  */
