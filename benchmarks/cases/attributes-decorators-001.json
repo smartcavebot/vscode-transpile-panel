@@ -1,0 +1,40 @@
+{
+  "version": 1,
+  "id": "attributes-decorators-001",
+  "sourceLanguage": "csharp",
+  "targetLanguage": "python",
+  "category": "attributes-decorators",
+  "initialSource": "[Obsolete]\nclass Legacy {}",
+  "initialTarget": "@deprecated\nclass Legacy:\n    pass",
+  "steps": [
+    {
+      "id": "edit-1",
+      "edits": [
+        {
+          "rangeOffset": 1,
+          "rangeLength": 7,
+          "text": "Serializabl"
+        }
+      ],
+      "expectedSource": "[Serializable]\nclass Legacy {}",
+      "sourceIsSyntacticallyComplete": true,
+      "notes": "Reference is policy-dependent; deferred semantics for obsolete/deprecation."
+    },
+    {
+      "id": "edit-2",
+      "edits": [
+        {
+          "rangeOffset": 1,
+          "rangeLength": 28,
+          "text": "Obsolete]\nclass Legacy { "
+        }
+      ],
+      "expectedSource": "[Obsolete]\nclass Legacy { }",
+      "referenceTargets": [
+        "@deprecated\nclass Legacy:\n    pass"
+      ],
+      "sourceIsSyntacticallyComplete": true,
+      "notes": "Reference is policy-dependent; deferred semantics for obsolete/deprecation."
+    }
+  ]
+}
