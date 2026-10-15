@@ -8,7 +8,7 @@ import {
     HarnessProfile,
     HarnessFacility,
     resolveHarnessSections,
-    selectCoverageRequirement,
+    selectNextProjectionRequirement,
     stabilizeProjectionRequirement,
 } from '../../core';
 import { toCoreChanges, toCoreDocument } from './documentAdapter';
@@ -214,9 +214,10 @@ export class VscodeProjectionPair implements vscode.Disposable {
                 return lastAccepted;
             }
 
-            const requested = selectCoverageRequirement(
+            const requested = selectNextProjectionRequirement(
                 sourceText,
                 gap,
+                this.buffer.segments,
                 this.coverageChunkLines,
                 this.coverageChunkCharacters,
             );
