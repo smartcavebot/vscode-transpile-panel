@@ -4,32 +4,37 @@ const fs = require('node:fs');
 const http = require('node:http');
 const os = require('node:os');
 const path = require('node:path');
-const { spawnSync } = require('node:child_process');
+const { spawn } = require('node:child_process');
 
 const root=path.resolve(__dirname,'..');
 const script=path.join(__dirname,'matrix.js');
 const temporary=fs.mkdtempSync(path.join(os.tmpdir(),'projection-matrix-'));
-function cli(args) {
-    const result=spawnSync(process.execPath,[script,...args],{
-        cwd:root,encoding:'utf8',timeout:200000,
-        env:{...process.env,PROJECTION_BENCH_ALLOW_REMOTE:'0'},
+async function cli(args) {
+    return new Promise((resolve,reject)=>{
+        const child=spawn(process.execPath,[script,...args],{
+            cwd:root,env:{...process.env,PROJECTION_BENCH_ALLOW_REMOTE:'0'},
+        });
+        let stdout='',stderr='';
+        child.stdout.on('data',(chunk)=>stdout+=chunk);
+        child.stderr.on('data',(chunk)=>stderr+=chunk);
+        child.on('error',reject);
+        child.on('exit',(status)=>resolve({status,stdout,stderr}));
     });
-    if(result.error) throw result.error;
-    return result;
 }
+
 function parsed(result) {
     assert.equal(result.status,0,result.stderr);
     return JSON.parse(result.stdout);
 }
 async function main() {
-    const plan=parsed(cli(['plan','--phase','pilot']));
+    const plan=parsed(await cli(['plan','--phase','pilot']));
     assert.equal(plan.cellCount,36);
     assert.equal(plan.estimatedRequests,36);
     assert.equal(plan.cells.filter((c)=>c.status==='unbound').length,27);
     assert.equal(plan.cells.filter((c)=>c.status==='adapter-needed').length,6);
     assert.equal(plan.cells.filter((c)=>c.status==='approval-required').length,3);
-    assert.notEqual(cli(['plan','--phase','full']).status,0);
-    assert.notEqual(cli(['run','--phase','pilot']).status,0);
+    assert.notEqual((await cli(['plan','--phase','full'])).status,0);
+    assert.notEqual((await cli(['run','--phase','pilot'])).status,0);
 
     let called=0;
     const server=http.createServer((request,response)=>{
@@ -63,7 +68,7 @@ async function main() {
         const runArgs=['run','--phase','pilot','--cell','qwen25coder-1_5b-q4',
             '--protocol','grounded-micro-edit','--bindings',bindingFile,
             '--output-root',path.join(temporary,'outputs')];
-        const first=parsed(cli(runArgs));
+        const first=parsed(await cli(runArgs));
         assert.equal(first.status,'completed');
         assert.equal(first.acceptedAttempts,1);
         assert.equal(called,1);
@@ -73,11 +78,11 @@ async function main() {
         assert.equal(result.rows[0].patchSuccess,true);
         assert.equal(result.rows[0].referenceExact,true);
         assert.equal(result.rows[0].semanticEquivalence,null);
-        const second=parsed(cli(runArgs));
+        const second=parsed(await cli(runArgs));
         assert.equal(second.status,'resumed-verified');
         assert.equal(called,1,'resume must not consume another inference call');
         fs.appendFileSync(resultFile,'\ncorruption\n');
-        const third=cli(runArgs);
+        const third=await cli(runArgs);
         assert.notEqual(third.status,0);
         assert.match(third.stderr,/checksum mismatch/);
         assert.equal(called,1);
