@@ -115,6 +115,7 @@ function outputFiles(base, cell) {
         attempts:path.join(dir,'attempts.json'),
         results:path.join(dir,'results.json'),
         manifest:path.join(dir,'manifest.json'),
+        intent:path.join(dir,'intent.json'),
         pending:path.join(dir,'attempts.partial.json'),
     };
 }
@@ -181,6 +182,20 @@ function runCell(plan,cell,base,opts) {
     if(completed(files,signature)) return {cell:cell.id,protocol:cell.protocol,
         caseId:cell.caseId,status:'resumed-verified'};
     fs.mkdirSync(files.dir,{recursive:true,mode:0o700});
+    // Bind any interrupted partial artifacts to precisely the original
+    // matrix, source trajectory, endpoint, model alias and quantization.
+    if(exists(files.intent)) {
+        const intent=json(files.intent);
+        if(intent.configSha256!==signature) {
+            throw new Error('Partial matrix cell belongs to a different configuration; refusing to reuse it.');
+        }
+    } else {
+        if([files.pending,files.attempts,files.results].some(exists)) {
+            throw new Error('Unattested partial matrix artifacts exist; inspect them before retrying.');
+        }
+        fs.writeFileSync(files.intent,JSON.stringify({schemaVersion:1,configSha256:signature})+'\\n',
+            {flag:'wx',mode:0o600});
+    }
     // A complete recorded .partial file is valid after a prior crash; re-use
     // it instead of paying for inference again. Never overwrite unknown files.
     if(!exists(files.attempts)) {
