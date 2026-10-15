@@ -1,0 +1,53 @@
+{
+  "version": 1,
+  "id": "transaction-multiedit-001",
+  "sourceLanguage": "csharp",
+  "targetLanguage": "python",
+  "category": "simultaneous-edits",
+  "initialSource": "var a = 1; var b = 2;",
+  "initialTarget": "a = 1\nb = 2",
+  "steps": [
+    {
+      "id": "edit-1",
+      "edits": [
+        {
+          "rangeOffset": 8,
+          "rangeLength": 12,
+          "text": "3; var b = 4"
+        }
+      ],
+      "expectedSource": "var a = 3; var b = 4;",
+      "referenceTargets": [
+        "a = 3\nb = 4"
+      ],
+      "sourceIsSyntacticallyComplete": true
+    },
+    {
+      "id": "edit-2",
+      "edits": [
+        {
+          "rangeOffset": 19,
+          "rangeLength": 1,
+          "text": ""
+        }
+      ],
+      "expectedSource": "var a = 3; var b = ;",
+      "sourceIsSyntacticallyComplete": false
+    },
+    {
+      "id": "edit-3",
+      "edits": [
+        {
+          "rangeOffset": 8,
+          "rangeLength": 11,
+          "text": "5; var b = 6"
+        }
+      ],
+      "expectedSource": "var a = 5; var b = 6;",
+      "referenceTargets": [
+        "a = 5\nb = 6"
+      ],
+      "sourceIsSyntacticallyComplete": true
+    }
+  ]
+}
