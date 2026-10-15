@@ -46,8 +46,32 @@ export class ProjectionSession {
     private previousSourceRange?: TextRange;
     private previousProjection?: string;
     private cancellation?: CoreCancellationController;
+    private policy: SemanticPolicyProfile;
+    private harness: HarnessProfile;
 
-    constructor(private readonly options: ProjectionSessionOptions) {}
+    constructor(private readonly options: ProjectionSessionOptions) {
+        this.policy = options.policy;
+        this.harness = options.harness;
+    }
+
+    get currentPolicy(): SemanticPolicyProfile { return this.policy; }
+    get currentHarness(): HarnessProfile { return this.harness; }
+
+    /** Returns a new revision only when the effective projection configuration changes. */
+    reconfigure(policy: SemanticPolicyProfile, harness: HarnessProfile): number | undefined {
+        if (JSON.stringify(this.policy) === JSON.stringify(policy) &&
+            JSON.stringify(this.harness) === JSON.stringify(harness)) return undefined;
+        if (harness.targetLanguage !== this.options.targetLanguage) {
+            throw new Error('Harness target language does not match the projection target.');
+        }
+        this.policy = policy;
+        this.harness = harness;
+        const revision = this.invalidate();
+        this.previousSourceRegion = undefined;
+        this.previousSourceRange = undefined;
+        this.previousProjection = undefined;
+        return revision;
+    }
 
     get currentRevision(): number {
         return this.revision;
@@ -131,8 +155,8 @@ export class ProjectionSession {
             previousSourceRegion: this.previousSourceRegion,
             previousSourceRange: this.previousSourceRange,
             previousProjection: this.previousProjection,
-            policy: this.options.policy,
-            harness: this.options.harness,
+            policy: this.policy,
+            harness: this.harness,
             signal: cancellation.signal,
         });
 
