@@ -24,6 +24,7 @@ try {
     run(process.execPath, [path.join(root, 'benchmarks', 'test-run.js')]);
     run(process.execPath, [path.join(root, 'benchmarks', 'test-record-model.js')]);
     run(process.execPath, [path.join(root, 'benchmarks', 'test-matrix.js')]);
+    run(process.execPath, [path.join(root, 'benchmarks', 'test-copilot.js')]);
 } finally {
     fs.rmSync(outDir, { recursive: true, force: true });
 }
