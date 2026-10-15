@@ -149,7 +149,12 @@ function main() {
                 if (attempt) {
                     const response = attempt.response;
                     assert(response && typeof response === 'object', 'Missing response.');
-                    if (protocol === 'grounded-micro-edit') {
+                    if (response.kind === 'error' &&
+                        typeof response.code === 'string' &&
+                        response.code.length > 0) {
+                        patchSuccess = protocol === 'grounded-micro-edit' ? false : null;
+                        failureCode = response.code;
+                    } else if (protocol === 'grounded-micro-edit') {
                         assert(response.kind === 'patch' && Array.isArray(response.edits),
                             'Grounded micro-edit requires a patch response.');
                         try {
@@ -237,8 +242,11 @@ function main() {
         fs.rmSync(core.outDir, { recursive: true, force: true });
     }
 }
-try { main(); }
-catch (error) {
-    process.stderr.write(`benchmark failed: ${error.stack || error}\n`);
-    process.exitCode = 1;
+module.exports = { loadTrajectories, applySourceEdits, compileCore, differenceSpan, percentile, pythonSyntax };
+if (require.main === module) {
+    try { main(); }
+    catch (error) {
+        process.stderr.write(`benchmark failed: ${error.stack || error}\n`);
+        process.exitCode = 1;
+    }
 }
