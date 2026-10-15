@@ -19,6 +19,7 @@ try {
     run(process.execPath, [path.join(root, 'tests', 'literal-boundary-smoke.js')]);
     run(process.execPath, [path.join(root, 'tests', 'core-contracts-smoke.js')]);
     run(process.execPath, [path.join(root, 'tests', 'policy-harness-smoke.js')]);
+    run(process.execPath, [path.join(root, 'tests', 'policy-reconfigure-smoke.js')]);
 } finally {
     fs.rmSync(outDir, { recursive: true, force: true });
 }
