@@ -6,9 +6,48 @@ import {
     VscodeProjectionPair,
 } from './adapters/vscode';
 import { LiteralBoundaryProjectionProvider } from './core/literalBoundary';
+import {
+    resolveSemanticPolicy,
+    SemanticPolicySchema,
+    HarnessFacility,
+    HarnessProfile,
+} from './core';
 import { ScaffoldProjectionProvider } from './providers/ScaffoldProjectionProvider';
 
 type RefreshMode = 'manual' | 'debounced';
+
+const CSHARP_PYTHON_POLICY: SemanticPolicySchema = {
+    id: 'csharp-python-v1',
+    choices: [
+        { id: 'linq', values: ['lazy', 'eager'], defaultValue: 'lazy' },
+        { id: 'exceptions', values: ['throw', 'result'], defaultValue: 'throw' },
+        { id: 'async', values: ['asyncio', 'sync'], defaultValue: 'asyncio' },
+        { id: 'inheritance', values: ['inherit', 'compose'], defaultValue: 'inherit' },
+        { id: 'attributes', values: ['decorators', 'registration'], defaultValue: 'decorators' },
+    ],
+};
+
+const AVAILABLE_HARNESS: readonly HarnessFacility[] = [
+    { id: 'decimal', targetLanguage: 'python', text: 'from decimal import Decimal\n' },
+];
+
+function configuredProfiles(targetLanguage: string): {
+    policy: ReturnType<typeof resolveSemanticPolicy>;
+    harness: HarnessProfile;
+    facilities: readonly HarnessFacility[];
+} {
+    const config = vscode.workspace.getConfiguration('transpilePanel');
+    const policy = resolveSemanticPolicy(
+        CSHARP_PYTHON_POLICY,
+        config.get<Record<string, string>>('policyChoices', {}),
+    );
+    const harness: HarnessProfile = {
+        id: 'python-stdlib',
+        targetLanguage,
+        facilities: config.get<string[]>('harnessFacilities', []),
+    };
+    return { policy, harness, facilities: AVAILABLE_HARNESS };
+}
 
 export function activate(context: vscode.ExtensionContext): void {
     const documents = new ProjectionDocumentProvider();
@@ -91,6 +130,7 @@ export function activate(context: vscode.ExtensionContext): void {
                 config.get<number>('coverageChunkCharacters', 6000),
             );
 
+            const profiles = configuredProfiles(targetLanguage);
             disposePair();
             const pair = new VscodeProjectionPair(
                 editor.document.uri,
@@ -105,6 +145,9 @@ export function activate(context: vscode.ExtensionContext): void {
                     coverageChunkLines,
                     coverageChunkCharacters,
                     mode,
+                    policy: profiles.policy,
+                    harness: profiles.harness,
+                    availableFacilities: profiles.facilities,
                 },
             );
             activePair = pair;
@@ -133,6 +176,22 @@ export function activate(context: vscode.ExtensionContext): void {
         vscode.commands.registerCommand('transpilePanel.refresh', () => {
             clearDebounce();
             return refreshPair().catch(reportError);
+        }),
+        vscode.workspace.onDidChangeConfiguration((event) => {
+            if (!event.affectsConfiguration('transpilePanel.policyChoices') &&
+                !event.affectsConfiguration('transpilePanel.harnessFacilities')) return;
+            const pair = activePair;
+            const source = sourceDocumentForPair();
+            if (!pair || !source) return;
+            try {
+                const profiles = configuredProfiles(pair.targetLanguage);
+                if (pair.updateProfiles(profiles.policy, profiles.harness, profiles.facilities)) {
+                    clearDebounce();
+                    void refreshPair(source).catch(reportError);
+                }
+            } catch (error) {
+                reportError(error);
+            }
         }),
         vscode.workspace.onDidChangeTextDocument((event) => {
             const pair = activePair;
