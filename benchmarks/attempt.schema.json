@@ -1,0 +1,126 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/smartcavebot/vscode-transpile-panel/benchmarks/attempt.schema.json",
+  "title": "Recorded incremental-projection attempts",
+  "type": "array",
+  "items": {
+    "type": "object",
+    "additionalProperties": false,
+    "required": [
+      "caseId",
+      "stepId",
+      "modelId",
+      "protocol",
+      "response"
+    ],
+    "properties": {
+      "caseId": {
+        "type": "string",
+        "minLength": 1
+      },
+      "stepId": {
+        "type": "string",
+        "minLength": 1
+      },
+      "modelId": {
+        "type": "string",
+        "minLength": 1
+      },
+      "providerId": {
+        "type": "string"
+      },
+      "quantization": {
+        "type": [
+          "string",
+          "null"
+        ]
+      },
+      "protocol": {
+        "enum": [
+          "full-rewrite",
+          "update-instruction",
+          "grounded-micro-edit"
+        ]
+      },
+      "elapsedMs": {
+        "type": [
+          "number",
+          "null"
+        ],
+        "minimum": 0
+      },
+      "outboundCharacters": {
+        "type": [
+          "integer",
+          "null"
+        ],
+        "minimum": 0
+      },
+      "outboundTokens": {
+        "type": [
+          "integer",
+          "null"
+        ],
+        "minimum": 0
+      },
+      "outboundCanaryPresent": {
+        "type": [
+          "boolean",
+          "null"
+        ]
+      },
+      "response": {
+        "oneOf": [
+          {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "kind",
+              "text"
+            ],
+            "properties": {
+              "kind": {
+                "const": "text"
+              },
+              "text": {
+                "type": "string"
+              }
+            }
+          },
+          {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "kind",
+              "edits"
+            ],
+            "properties": {
+              "kind": {
+                "const": "patch"
+              },
+              "edits": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "required": [
+                    "search",
+                    "replace"
+                  ],
+                  "properties": {
+                    "search": {
+                      "type": "string"
+                    },
+                    "replace": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        ]
+      }
+    }
+  }
+}

@@ -1,0 +1,64 @@
+{
+  "version": 1,
+  "id": "literal-incomplete-001",
+  "sourceLanguage": "csharp",
+  "targetLanguage": "python",
+  "category": "literals-and-incomplete-editing",
+  "policy": {
+    "id": "csharp-python-v1",
+    "choices": {
+      "linq": "lazy"
+    }
+  },
+  "harness": {
+    "id": "none",
+    "facilities": []
+  },
+  "initialSource": "var x = 1;",
+  "initialTarget": "x = 1",
+  "steps": [
+    {
+      "id": "replace-literal",
+      "edits": [
+        {
+          "rangeOffset": 8,
+          "rangeLength": 1,
+          "text": "2"
+        }
+      ],
+      "expectedSource": "var x = 2;",
+      "referenceTargets": [
+        "x = 2"
+      ],
+      "sourceIsSyntacticallyComplete": true
+    },
+    {
+      "id": "incomplete-declaration",
+      "edits": [
+        {
+          "rangeOffset": 10,
+          "rangeLength": 0,
+          "text": " var y = "
+        }
+      ],
+      "expectedSource": "var x = 2; var y = ",
+      "sourceIsSyntacticallyComplete": false
+    },
+    {
+      "id": "finish-declaration",
+      "edits": [
+        {
+          "rangeOffset": 19,
+          "rangeLength": 0,
+          "text": "3;"
+        }
+      ],
+      "expectedSource": "var x = 2; var y = 3;",
+      "referenceTargets": [
+        "x = 2\ny = 3"
+      ],
+      "sourceIsSyntacticallyComplete": true
+    }
+  ],
+  "canaries": []
+}

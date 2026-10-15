@@ -1,0 +1,134 @@
+[
+  {
+    "providerId": "synthetic-fixture",
+    "quantization": null,
+    "elapsedMs": null,
+    "outboundCharacters": null,
+    "outboundTokens": null,
+    "outboundCanaryPresent": null,
+    "caseId": "literal-incomplete-001",
+    "stepId": "replace-literal",
+    "modelId": "synthetic-micro-fixture",
+    "protocol": "grounded-micro-edit",
+    "response": {
+      "kind": "patch",
+      "edits": [
+        {
+          "search": "x = 1",
+          "replace": "x = 2"
+        }
+      ]
+    }
+  },
+  {
+    "providerId": "synthetic-fixture",
+    "quantization": null,
+    "elapsedMs": null,
+    "outboundCharacters": null,
+    "outboundTokens": null,
+    "outboundCanaryPresent": null,
+    "caseId": "literal-incomplete-001",
+    "stepId": "incomplete-declaration",
+    "modelId": "synthetic-micro-fixture",
+    "protocol": "grounded-micro-edit",
+    "response": {
+      "kind": "patch",
+      "edits": [
+        {
+          "search": "x = 2",
+          "replace": "x = 2\ny = "
+        }
+      ]
+    }
+  },
+  {
+    "providerId": "synthetic-fixture",
+    "quantization": null,
+    "elapsedMs": null,
+    "outboundCharacters": null,
+    "outboundTokens": null,
+    "outboundCanaryPresent": null,
+    "caseId": "literal-incomplete-001",
+    "stepId": "finish-declaration",
+    "modelId": "synthetic-micro-fixture",
+    "protocol": "grounded-micro-edit",
+    "response": {
+      "kind": "patch",
+      "edits": [
+        {
+          "search": "y = ",
+          "replace": "y = 3"
+        }
+      ]
+    }
+  },
+  {
+    "providerId": "synthetic-fixture",
+    "quantization": null,
+    "elapsedMs": null,
+    "outboundCharacters": null,
+    "outboundTokens": null,
+    "outboundCanaryPresent": null,
+    "caseId": "linq-eager-001",
+    "stepId": "change-projection-body",
+    "modelId": "synthetic-micro-fixture",
+    "protocol": "grounded-micro-edit",
+    "response": {
+      "kind": "patch",
+      "edits": [
+        {
+          "search": "x + 1",
+          "replace": "x + 2"
+        }
+      ]
+    }
+  },
+  {
+    "providerId": "synthetic-fixture",
+    "quantization": null,
+    "elapsedMs": null,
+    "outboundCharacters": null,
+    "outboundTokens": null,
+    "outboundCanaryPresent": null,
+    "caseId": "literal-incomplete-001",
+    "stepId": "replace-literal",
+    "modelId": "synthetic-rewrite-fixture",
+    "protocol": "full-rewrite",
+    "response": {
+      "kind": "text",
+      "text": "x = 2"
+    }
+  },
+  {
+    "providerId": "synthetic-fixture",
+    "quantization": null,
+    "elapsedMs": null,
+    "outboundCharacters": null,
+    "outboundTokens": null,
+    "outboundCanaryPresent": null,
+    "caseId": "literal-incomplete-001",
+    "stepId": "incomplete-declaration",
+    "modelId": "synthetic-rewrite-fixture",
+    "protocol": "full-rewrite",
+    "response": {
+      "kind": "text",
+      "text": "x = 2\ny = "
+    }
+  },
+  {
+    "providerId": "synthetic-fixture",
+    "quantization": null,
+    "elapsedMs": null,
+    "outboundCharacters": null,
+    "outboundTokens": null,
+    "outboundCanaryPresent": null,
+    "caseId": "literal-incomplete-001",
+    "stepId": "finish-declaration",
+    "modelId": "synthetic-rewrite-fixture",
+    "protocol": "full-rewrite",
+    "response": {
+      "kind": "text",
+      "text": "x = 2\ny = 3"
+    }
+  }
+]
