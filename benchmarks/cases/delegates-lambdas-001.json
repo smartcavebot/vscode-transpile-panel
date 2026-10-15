@@ -1,0 +1,53 @@
+{
+  "version": 1,
+  "id": "delegates-lambdas-001",
+  "sourceLanguage": "csharp",
+  "targetLanguage": "python",
+  "category": "delegates-lambdas-events",
+  "initialSource": "Func<int, int> twice = x => x * 2;",
+  "initialTarget": "twice = lambda x: x * 2",
+  "steps": [
+    {
+      "id": "edit-1",
+      "edits": [
+        {
+          "rangeOffset": 32,
+          "rangeLength": 1,
+          "text": "3"
+        }
+      ],
+      "expectedSource": "Func<int, int> twice = x => x * 3;",
+      "referenceTargets": [
+        "twice = lambda x: x * 3"
+      ],
+      "sourceIsSyntacticallyComplete": true
+    },
+    {
+      "id": "edit-2",
+      "edits": [
+        {
+          "rangeOffset": 28,
+          "rangeLength": 5,
+          "text": ""
+        }
+      ],
+      "expectedSource": "Func<int, int> twice = x => ;",
+      "sourceIsSyntacticallyComplete": false
+    },
+    {
+      "id": "edit-3",
+      "edits": [
+        {
+          "rangeOffset": 28,
+          "rangeLength": 0,
+          "text": "x * 4"
+        }
+      ],
+      "expectedSource": "Func<int, int> twice = x => x * 4;",
+      "referenceTargets": [
+        "twice = lambda x: x * 4"
+      ],
+      "sourceIsSyntacticallyComplete": true
+    }
+  ]
+}

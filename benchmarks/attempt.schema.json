@@ -118,6 +118,23 @@
                 }
               }
             }
+          },
+          {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "kind",
+              "code"
+            ],
+            "properties": {
+              "kind": {
+                "const": "error"
+              },
+              "code": {
+                "type": "string",
+                "minLength": 1
+              }
+            }
           }
         ]
       }

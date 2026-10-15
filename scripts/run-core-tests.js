@@ -20,7 +20,9 @@ try {
     run(process.execPath, [path.join(root, 'tests', 'core-contracts-smoke.js')]);
     run(process.execPath, [path.join(root, 'tests', 'policy-harness-smoke.js')]);
     run(process.execPath, [path.join(root, 'tests', 'policy-reconfigure-smoke.js')]);
+    run(process.execPath, [path.join(root, 'benchmarks', 'validate-corpus.js')]);
     run(process.execPath, [path.join(root, 'benchmarks', 'test-run.js')]);
+    run(process.execPath, [path.join(root, 'benchmarks', 'test-record-model.js')]);
 } finally {
     fs.rmSync(outDir, { recursive: true, force: true });
 }

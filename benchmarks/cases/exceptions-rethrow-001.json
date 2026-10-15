@@ -1,0 +1,41 @@
+{
+  "version": 1,
+  "id": "exceptions-rethrow-001",
+  "sourceLanguage": "csharp",
+  "targetLanguage": "python",
+  "category": "exceptions-rethrow",
+  "initialSource": "try { Run(); } catch (Exception) { throw; }",
+  "initialTarget": "try:\n    Run()\nexcept Exception:\n    raise",
+  "steps": [
+    {
+      "id": "edit-1",
+      "edits": [
+        {
+          "rangeOffset": 6,
+          "rangeLength": 3,
+          "text": "Save"
+        }
+      ],
+      "expectedSource": "try { Save(); } catch (Exception) { throw; }",
+      "referenceTargets": [
+        "try:\n    Save()\nexcept Exception:\n    raise"
+      ],
+      "sourceIsSyntacticallyComplete": true
+    },
+    {
+      "id": "edit-2",
+      "edits": [
+        {
+          "rangeOffset": 41,
+          "rangeLength": 0,
+          "text": " new Exception()"
+        }
+      ],
+      "expectedSource": "try { Save(); } catch (Exception) { throw new Exception(); }",
+      "referenceTargets": [
+        "try:\n    Save()\nexcept Exception:\n    raise Exception()"
+      ],
+      "sourceIsSyntacticallyComplete": true
+    }
+  ]
+}

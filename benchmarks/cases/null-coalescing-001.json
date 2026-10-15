@@ -1,0 +1,53 @@
+{
+  "version": 1,
+  "id": "null-coalescing-001",
+  "sourceLanguage": "csharp",
+  "targetLanguage": "python",
+  "category": "expressions-nullability",
+  "initialSource": "int? x = null;\nvar y = x ?? 7;",
+  "initialTarget": "x = None\ny = x if x is not None else 7",
+  "steps": [
+    {
+      "id": "edit-1",
+      "edits": [
+        {
+          "rangeOffset": 28,
+          "rangeLength": 1,
+          "text": "9"
+        }
+      ],
+      "expectedSource": "int? x = null;\nvar y = x ?? 9;",
+      "referenceTargets": [
+        "x = None\ny = x if x is not None else 9"
+      ],
+      "sourceIsSyntacticallyComplete": true
+    },
+    {
+      "id": "edit-2",
+      "edits": [
+        {
+          "rangeOffset": 28,
+          "rangeLength": 1,
+          "text": ""
+        }
+      ],
+      "expectedSource": "int? x = null;\nvar y = x ?? ;",
+      "sourceIsSyntacticallyComplete": false
+    },
+    {
+      "id": "edit-3",
+      "edits": [
+        {
+          "rangeOffset": 28,
+          "rangeLength": 0,
+          "text": "12"
+        }
+      ],
+      "expectedSource": "int? x = null;\nvar y = x ?? 12;",
+      "referenceTargets": [
+        "x = None\ny = x if x is not None else 12"
+      ],
+      "sourceIsSyntacticallyComplete": true
+    }
+  ]
+}

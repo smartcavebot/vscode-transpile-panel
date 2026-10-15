@@ -1,0 +1,59 @@
+{
+  "version": 1,
+  "id": "linq-lazy-001",
+  "sourceLanguage": "csharp",
+  "targetLanguage": "python",
+  "category": "linq-policy-lazy",
+  "policy": {
+    "id": "csharp-python-v1",
+    "choices": {
+      "linq": "lazy"
+    }
+  },
+  "initialSource": "var result = values.Where(x => x > 2);",
+  "initialTarget": "result = (x for x in values if x > 2)",
+  "steps": [
+    {
+      "id": "edit-1",
+      "edits": [
+        {
+          "rangeOffset": 35,
+          "rangeLength": 1,
+          "text": "4"
+        }
+      ],
+      "expectedSource": "var result = values.Where(x => x > 4);",
+      "referenceTargets": [
+        "result = (x for x in values if x > 4)"
+      ],
+      "sourceIsSyntacticallyComplete": true
+    },
+    {
+      "id": "edit-2",
+      "edits": [
+        {
+          "rangeOffset": 35,
+          "rangeLength": 1,
+          "text": ""
+        }
+      ],
+      "expectedSource": "var result = values.Where(x => x > );",
+      "sourceIsSyntacticallyComplete": false
+    },
+    {
+      "id": "edit-3",
+      "edits": [
+        {
+          "rangeOffset": 35,
+          "rangeLength": 0,
+          "text": "6"
+        }
+      ],
+      "expectedSource": "var result = values.Where(x => x > 6);",
+      "referenceTargets": [
+        "result = (x for x in values if x > 6)"
+      ],
+      "sourceIsSyntacticallyComplete": true
+    }
+  ]
+}

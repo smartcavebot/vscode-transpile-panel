@@ -1,0 +1,53 @@
+{
+  "version": 1,
+  "id": "pattern-matching-001",
+  "sourceLanguage": "csharp",
+  "targetLanguage": "python",
+  "category": "pattern-matching",
+  "initialSource": "if (value is int n) Console.WriteLine(n);",
+  "initialTarget": "if isinstance(value, int):\n    print(value)",
+  "steps": [
+    {
+      "id": "edit-1",
+      "edits": [
+        {
+          "rangeOffset": 13,
+          "rangeLength": 3,
+          "text": "string"
+        }
+      ],
+      "expectedSource": "if (value is string n) Console.WriteLine(n);",
+      "referenceTargets": [
+        "if isinstance(value, str):\n    print(value)"
+      ],
+      "sourceIsSyntacticallyComplete": true
+    },
+    {
+      "id": "edit-2",
+      "edits": [
+        {
+          "rangeOffset": 20,
+          "rangeLength": 1,
+          "text": ""
+        }
+      ],
+      "expectedSource": "if (value is string ) Console.WriteLine(n);",
+      "sourceIsSyntacticallyComplete": false
+    },
+    {
+      "id": "edit-3",
+      "edits": [
+        {
+          "rangeOffset": 20,
+          "rangeLength": 21,
+          "text": "s) Console.WriteLine(s"
+        }
+      ],
+      "expectedSource": "if (value is string s) Console.WriteLine(s);",
+      "referenceTargets": [
+        "if isinstance(value, str):\n    print(value)"
+      ],
+      "sourceIsSyntacticallyComplete": true
+    }
+  ]
+}

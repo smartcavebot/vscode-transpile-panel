@@ -1,0 +1,41 @@
+{
+  "version": 1,
+  "id": "casts-numeric-001",
+  "sourceLanguage": "csharp",
+  "targetLanguage": "python",
+  "category": "casts-numeric",
+  "initialSource": "int total = (int)value;",
+  "initialTarget": "total = int(value)",
+  "steps": [
+    {
+      "id": "edit-1",
+      "edits": [
+        {
+          "rangeOffset": 0,
+          "rangeLength": 16,
+          "text": "double total = (double"
+        }
+      ],
+      "expectedSource": "double total = (double)value;",
+      "referenceTargets": [
+        "total = float(value)"
+      ],
+      "sourceIsSyntacticallyComplete": true
+    },
+    {
+      "id": "edit-2",
+      "edits": [
+        {
+          "rangeOffset": 0,
+          "rangeLength": 22,
+          "text": "int total = (int"
+        }
+      ],
+      "expectedSource": "int total = (int)value;",
+      "referenceTargets": [
+        "total = int(value)"
+      ],
+      "sourceIsSyntacticallyComplete": true
+    }
+  ]
+}
