@@ -1,0 +1,78 @@
+name: Copilot hosted-oracle benchmark
+
+on:
+  workflow_dispatch:
+    inputs:
+      model_id:
+        description: "Copilot model id enabled for this organization (e.g. a currently supported model)"
+        required: true
+        type: string
+      case_id:
+        description: "Synthetic benchmark trajectory id"
+        required: true
+        type: string
+        default: "linq-eager-001"
+      protocol:
+        description: "Update protocol"
+        required: true
+        type: choice
+        default: grounded-micro-edit
+        options:
+          - full-rewrite
+          - update-instruction
+          - grounded-micro-edit
+      max_requests:
+        description: "Maximum billed requests, 1-5 (must cover the case's steps)"
+        required: true
+        type: number
+        default: 1
+      acknowledge_billing:
+        description: "I authorize this manually triggered Copilot inference run to incur organization billing/usage"
+        required: true
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+  copilot-requests: write
+
+concurrency:
+  group: copilot-oracle-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  hosted-oracle:
+    if: ${{ inputs.acknowledge_billing == true }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+      - name: Install project dependencies
+        run: npm ci
+      - name: Install pinned GitHub Copilot SDK (manual run only)
+        run: npm install --no-save --package-lock=false @github/copilot-sdk@1.0.19
+      - name: Record bounded Copilot hosted-oracle trajectory
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          PROJECTION_BENCH_COPILOT_MODEL: ${{ inputs.model_id }}
+          PROJECTION_BENCH_COPILOT_CASE: ${{ inputs.case_id }}
+          PROJECTION_BENCH_COPILOT_PROTOCOL: ${{ inputs.protocol }}
+          PROJECTION_BENCH_COPILOT_MAX_REQUESTS: ${{ inputs.max_requests }}
+          PROJECTION_BENCH_COPILOT_OUTPUT: benchmarks/attempts.copilot.recorded.json
+        run: |
+          node benchmarks/record-copilot.js
+          node benchmarks/run.js benchmarks/attempts.copilot.recorded.json > benchmarks/results.copilot.json
+      - name: Retain raw attempts and scored results (may contain synthetic source text)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: copilot-oracle-${{ github.run_id }}
+          path: |
+            benchmarks/attempts.copilot.recorded.json
+            benchmarks/results.copilot.json
+          if-no-files-found: warn
+          retention-days: 7
