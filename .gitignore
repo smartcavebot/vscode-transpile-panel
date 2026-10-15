@@ -11,3 +11,7 @@ CLAUDE.md
 benchmarks/attempts.*.recorded.json
 benchmarks/attempts.recorded.json
 benchmarks/results.*.json
+
+# Local model matrix bindings and attempt/score artifacts
+benchmarks/model-bindings.local.json
+benchmarks/matrix-runs/
