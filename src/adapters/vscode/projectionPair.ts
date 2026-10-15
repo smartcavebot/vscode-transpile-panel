@@ -142,6 +142,9 @@ export class VscodeProjectionPair implements vscode.Disposable {
         this.assertActive();
         // Resolve before mutation; invalid profiles must leave the session unchanged.
         resolveHarnessSections(harness, availableFacilities);
+        if (harness.facilities.length > 0 && this.targetLanguage !== 'python') {
+            throw new Error('Harness display requires a target-language renderer.');
+        }
         const revision = this.session.reconfigure(policy, harness);
         this.availableFacilities = availableFacilities;
         if (revision === undefined) return false;
