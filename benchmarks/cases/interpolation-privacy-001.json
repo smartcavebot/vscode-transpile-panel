@@ -1,0 +1,56 @@
+{
+  "version": 1,
+  "id": "interpolation-privacy-001",
+  "sourceLanguage": "csharp",
+  "targetLanguage": "python",
+  "category": "interpolation-security",
+  "initialSource": "var s = $\"hello {name}\";",
+  "initialTarget": "s = f\"hello {name}\"",
+  "steps": [
+    {
+      "id": "edit-1",
+      "edits": [
+        {
+          "rangeOffset": 10,
+          "rangeLength": 5,
+          "text": "secret: CANARY_SYNTHETIC_NOT_SECRET"
+        }
+      ],
+      "expectedSource": "var s = $\"secret: CANARY_SYNTHETIC_NOT_SECRET {name}\";",
+      "referenceTargets": [
+        "s = f\"secret: CANARY_SYNTHETIC_NOT_SECRET {name}\""
+      ],
+      "sourceIsSyntacticallyComplete": true
+    },
+    {
+      "id": "edit-2",
+      "edits": [
+        {
+          "rangeOffset": 51,
+          "rangeLength": 1,
+          "text": ""
+        }
+      ],
+      "expectedSource": "var s = $\"secret: CANARY_SYNTHETIC_NOT_SECRET {name\";",
+      "sourceIsSyntacticallyComplete": false
+    },
+    {
+      "id": "edit-3",
+      "edits": [
+        {
+          "rangeOffset": 51,
+          "rangeLength": 0,
+          "text": "}"
+        }
+      ],
+      "expectedSource": "var s = $\"secret: CANARY_SYNTHETIC_NOT_SECRET {name}\";",
+      "referenceTargets": [
+        "s = f\"secret: CANARY_SYNTHETIC_NOT_SECRET {name}\""
+      ],
+      "sourceIsSyntacticallyComplete": true
+    }
+  ],
+  "canaries": [
+    "CANARY_SYNTHETIC_NOT_SECRET"
+  ]
+}
