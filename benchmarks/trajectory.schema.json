@@ -1,0 +1,149 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/smartcavebot/vscode-transpile-panel/benchmarks/trajectory.schema.json",
+  "title": "Incremental projection trajectory",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "version",
+    "id",
+    "sourceLanguage",
+    "targetLanguage",
+    "category",
+    "initialSource",
+    "initialTarget",
+    "steps"
+  ],
+  "properties": {
+    "version": {
+      "const": 1
+    },
+    "id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "sourceLanguage": {
+      "type": "string",
+      "minLength": 1
+    },
+    "targetLanguage": {
+      "type": "string",
+      "minLength": 1
+    },
+    "category": {
+      "type": "string",
+      "minLength": 1
+    },
+    "policy": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "choices"
+      ],
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "choices": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "harness": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "facilities"
+      ],
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "facilities": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "initialSource": {
+      "type": "string"
+    },
+    "initialTarget": {
+      "type": "string"
+    },
+    "steps": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "id",
+          "edits",
+          "expectedSource"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "minLength": 1
+          },
+          "edits": {
+            "type": "array",
+            "minItems": 1,
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "rangeOffset",
+                "rangeLength",
+                "text"
+              ],
+              "properties": {
+                "rangeOffset": {
+                  "type": "integer",
+                  "minimum": 0
+                },
+                "rangeLength": {
+                  "type": "integer",
+                  "minimum": 0
+                },
+                "text": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "expectedSource": {
+            "type": "string"
+          },
+          "referenceTargets": {
+            "type": "array",
+            "minItems": 1,
+            "items": {
+              "type": "string"
+            }
+          },
+          "sourceIsSyntacticallyComplete": {
+            "type": "boolean"
+          },
+          "notes": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "canaries": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    }
+  }
+}
