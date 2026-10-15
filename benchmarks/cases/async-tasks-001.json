@@ -1,0 +1,53 @@
+{
+  "version": 1,
+  "id": "async-tasks-001",
+  "sourceLanguage": "csharp",
+  "targetLanguage": "python",
+  "category": "async-task",
+  "initialSource": "async Task<int> GetAsync() { return 1; }",
+  "initialTarget": "async def GetAsync() -> int:\n    return 1",
+  "steps": [
+    {
+      "id": "edit-1",
+      "edits": [
+        {
+          "rangeOffset": 36,
+          "rangeLength": 1,
+          "text": "2"
+        }
+      ],
+      "expectedSource": "async Task<int> GetAsync() { return 2; }",
+      "referenceTargets": [
+        "async def GetAsync() -> int:\n    return 2"
+      ],
+      "sourceIsSyntacticallyComplete": true
+    },
+    {
+      "id": "edit-2",
+      "edits": [
+        {
+          "rangeOffset": 36,
+          "rangeLength": 1,
+          "text": ""
+        }
+      ],
+      "expectedSource": "async Task<int> GetAsync() { return ; }",
+      "sourceIsSyntacticallyComplete": false
+    },
+    {
+      "id": "edit-3",
+      "edits": [
+        {
+          "rangeOffset": 36,
+          "rangeLength": 0,
+          "text": "3"
+        }
+      ],
+      "expectedSource": "async Task<int> GetAsync() { return 3; }",
+      "referenceTargets": [
+        "async def GetAsync() -> int:\n    return 3"
+      ],
+      "sourceIsSyntacticallyComplete": true
+    }
+  ]
+}
