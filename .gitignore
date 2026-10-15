@@ -7,3 +7,7 @@ Thumbs.db
 
 # Local
 CLAUDE.md
+# Generated benchmark traces may contain source/target text; explicit review before publication
+benchmarks/attempts.*.recorded.json
+benchmarks/attempts.recorded.json
+benchmarks/results.*.json
