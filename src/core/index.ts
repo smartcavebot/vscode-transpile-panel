@@ -2,6 +2,7 @@ export * from './changes';
 export * from './model';
 export * from './literalBoundary';
 export * from './patch';
+export * from './policyHarness';
 export * from './projectionBuffer';
 export * from './provider';
 export * from './scheduler';

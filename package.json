@@ -117,6 +117,26 @@
           "minimum": 2,
           "maximum": 1000000,
           "description": "Hard character cap for one coverage focus, including minified or single-line source files. The two-character minimum preserves CRLF as an atomic text boundary."
+        },
+        "transpilePanel.policyChoices": {
+          "type": "object",
+          "default": {},
+          "additionalProperties": {
+            "type": "string"
+          },
+          "description": "C#→Python semantic choices: linq (lazy/eager), exceptions (throw/result), async (asyncio/sync), inheritance (inherit/compose), attributes (decorators/registration). Invalid keys or values are rejected."
+        },
+        "transpilePanel.harnessFacilities": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "enum": [
+              "decimal"
+            ]
+          },
+          "default": [],
+          "uniqueItems": true,
+          "description": "Target support facilities rendered separately from translated source; decimal supplies the Python Decimal import."
         }
       }
     }

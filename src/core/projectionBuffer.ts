@@ -117,6 +117,12 @@ export class TargetProjectionBuffer {
         this.sourceRevision = nextRevision;
     }
 
+    /** Profile changes invalidate semantics without altering source ownership. */
+    invalidateAll(nextRevision: number): void {
+        this.rebase([], nextRevision);
+        this.values = this.values.map((segment) => ({ ...segment, stale: true }));
+    }
+
     coverageGaps(sourceLength: number): readonly OffsetRange[] {
         return computeCoverageGaps(this.values, sourceLength);
     }
