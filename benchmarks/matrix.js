@@ -144,6 +144,10 @@ function fingerprint(plan,cell,binding) {
         cell:cell.id,protocol:cell.protocol,phase:cell.phase,
         modelId:binding.modelId,quantization:binding.quantization,
         endpoint:binding.endpoint,engine:binding.engine||null,
+        runtimeVersion:binding.runtimeVersion||null,
+        deviceLabel:plan.bindings.deviceLabel||null,
+        maxContextCharacters:process.env.PROJECTION_BENCH_MAX_CHARACTERS||'12000',
+        maxOutputTokens:process.env.PROJECTION_BENCH_MAX_OUTPUT_TOKENS||'2048',
         artifactSha256:binding.artifactSha256||null,
     }));
 }
