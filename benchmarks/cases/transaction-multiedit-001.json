@@ -12,8 +12,13 @@
       "edits": [
         {
           "rangeOffset": 8,
-          "rangeLength": 12,
-          "text": "3; var b = 4"
+          "rangeLength": 1,
+          "text": "3"
+        },
+        {
+          "rangeOffset": 19,
+          "rangeLength": 1,
+          "text": "4"
         }
       ],
       "expectedSource": "var a = 3; var b = 4;",
@@ -39,8 +44,13 @@
       "edits": [
         {
           "rangeOffset": 8,
-          "rangeLength": 11,
-          "text": "5; var b = 6"
+          "rangeLength": 1,
+          "text": "5"
+        },
+        {
+          "rangeOffset": 19,
+          "rangeLength": 0,
+          "text": "6"
         }
       ],
       "expectedSource": "var a = 5; var b = 6;",
