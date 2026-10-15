@@ -1,0 +1,53 @@
+{
+  "version": 1,
+  "id": "records-properties-001",
+  "sourceLanguage": "csharp",
+  "targetLanguage": "python",
+  "category": "records-properties",
+  "initialSource": "record Point(int X, int Y);",
+  "initialTarget": "from dataclasses import dataclass\n@dataclass\nclass Point:\n    X: int\n    Y: int",
+  "steps": [
+    {
+      "id": "edit-1",
+      "edits": [
+        {
+          "rangeOffset": 25,
+          "rangeLength": 0,
+          "text": ", int Z"
+        }
+      ],
+      "expectedSource": "record Point(int X, int Y, int Z);",
+      "referenceTargets": [
+        "from dataclasses import dataclass\n@dataclass\nclass Point:\n    X: int\n    Y: int\n    Z: int"
+      ],
+      "sourceIsSyntacticallyComplete": true
+    },
+    {
+      "id": "edit-2",
+      "edits": [
+        {
+          "rangeOffset": 31,
+          "rangeLength": 1,
+          "text": ""
+        }
+      ],
+      "expectedSource": "record Point(int X, int Y, int );",
+      "sourceIsSyntacticallyComplete": false
+    },
+    {
+      "id": "edit-3",
+      "edits": [
+        {
+          "rangeOffset": 31,
+          "rangeLength": 0,
+          "text": "W"
+        }
+      ],
+      "expectedSource": "record Point(int X, int Y, int W);",
+      "referenceTargets": [
+        "from dataclasses import dataclass\n@dataclass\nclass Point:\n    X: int\n    Y: int\n    W: int"
+      ],
+      "sourceIsSyntacticallyComplete": true
+    }
+  ]
+}
