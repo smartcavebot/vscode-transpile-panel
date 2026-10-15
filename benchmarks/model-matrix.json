@@ -1,0 +1,129 @@
+{
+  "version": 1,
+  "title": "SMA-246 C# to Python incremental projection model matrix",
+  "protocols": [
+    "full-rewrite",
+    "update-instruction",
+    "grounded-micro-edit"
+  ],
+  "phases": [
+    {
+      "id": "pilot",
+      "caseIds": [
+        "linq-eager-001"
+      ],
+      "purpose": "one-step response-shape, latency and patch-applicability screening"
+    },
+    {
+      "id": "privacy",
+      "caseIds": [
+        "interpolation-privacy-001"
+      ],
+      "purpose": "synthetic canary containment on 3 sequential edits"
+    },
+    {
+      "id": "full",
+      "caseIds": null,
+      "purpose": "all 16 trajectories / 41 sequential source-edit events"
+    }
+  ],
+  "variants": [
+    {
+      "id": "qwen25coder-1_5b-q4",
+      "family": "Qwen2.5-Coder",
+      "size": "1.5B",
+      "quantization": "Q4",
+      "adapter": "chat-completions",
+      "status": "candidate"
+    },
+    {
+      "id": "qwen25coder-1_5b-q5",
+      "family": "Qwen2.5-Coder",
+      "size": "1.5B",
+      "quantization": "Q5",
+      "adapter": "chat-completions",
+      "status": "candidate"
+    },
+    {
+      "id": "qwen25coder-1_5b-q8",
+      "family": "Qwen2.5-Coder",
+      "size": "1.5B",
+      "quantization": "Q8",
+      "adapter": "chat-completions",
+      "status": "candidate"
+    },
+    {
+      "id": "qwen25coder-3b-q4",
+      "family": "Qwen2.5-Coder",
+      "size": "3B",
+      "quantization": "Q4",
+      "adapter": "chat-completions",
+      "status": "candidate"
+    },
+    {
+      "id": "qwen25coder-3b-q5",
+      "family": "Qwen2.5-Coder",
+      "size": "3B",
+      "quantization": "Q5",
+      "adapter": "chat-completions",
+      "status": "candidate"
+    },
+    {
+      "id": "qwen25coder-3b-q8",
+      "family": "Qwen2.5-Coder",
+      "size": "3B",
+      "quantization": "Q8",
+      "adapter": "chat-completions",
+      "status": "candidate"
+    },
+    {
+      "id": "qwen25coder-7b-q4",
+      "family": "Qwen2.5-Coder",
+      "size": "7B",
+      "quantization": "Q4",
+      "adapter": "chat-completions",
+      "status": "candidate"
+    },
+    {
+      "id": "qwen25coder-7b-q5",
+      "family": "Qwen2.5-Coder",
+      "size": "7B",
+      "quantization": "Q5",
+      "adapter": "chat-completions",
+      "status": "candidate"
+    },
+    {
+      "id": "qwen25coder-7b-q8",
+      "family": "Qwen2.5-Coder",
+      "size": "7B",
+      "quantization": "Q8",
+      "adapter": "chat-completions",
+      "status": "candidate"
+    },
+    {
+      "id": "starcoder2-3b-q4-fim",
+      "family": "StarCoder2",
+      "size": "3B",
+      "quantization": "Q4",
+      "adapter": "fim",
+      "status": "adapter-needed"
+    },
+    {
+      "id": "codet5-specialist",
+      "family": "CodeT5-class",
+      "size": "TBD",
+      "quantization": "TBD",
+      "adapter": "seq2seq",
+      "status": "adapter-needed"
+    },
+    {
+      "id": "hosted-oracle",
+      "family": "hosted-reference",
+      "size": "TBD",
+      "quantization": "provider",
+      "adapter": "chat-completions",
+      "status": "approval-required"
+    }
+  ],
+  "policy": "Model aliases must be supplied explicitly in a local ignored bindings file. Listed quantizations are experiment labels, never inferred from names. FIM/seq2seq need proper adapters; hosted oracle requires separate privacy authorization."
+}
