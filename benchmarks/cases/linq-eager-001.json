@@ -1,0 +1,36 @@
+{
+  "version": 1,
+  "id": "linq-eager-001",
+  "sourceLanguage": "csharp",
+  "targetLanguage": "python",
+  "category": "linq-policy-eager",
+  "policy": {
+    "id": "csharp-python-v1",
+    "choices": {
+      "linq": "eager"
+    }
+  },
+  "harness": {
+    "id": "none",
+    "facilities": []
+  },
+  "initialSource": "var result = values.Select(x => x + 1);",
+  "initialTarget": "result = [x + 1 for x in values]",
+  "steps": [
+    {
+      "id": "change-projection-body",
+      "edits": [
+        {
+          "rangeOffset": 34,
+          "rangeLength": 3,
+          "text": "+ 2"
+        }
+      ],
+      "expectedSource": "var result = values.Select(x => x + 2);",
+      "referenceTargets": [
+        "result = [x + 2 for x in values]"
+      ],
+      "sourceIsSyntacticallyComplete": true
+    }
+  ]
+}
